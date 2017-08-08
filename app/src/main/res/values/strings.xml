@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Hunan Manor</string>
+
+    <!-- hints-->
+    <string name="hint_phone_num">Phone Number</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_password_confirm">Confirm Password</string>
+
+    <!-- button text-->
+    <string name="btn_login">Login</string>
+    <string name="btn_sign_up">Sign up</string>
+    <string name="btn_guest">Use as a guest</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_confirm">Confirm</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_back">Back</string>
+
+    <!-- error messages -->
+    <string name="error_empty_username">Please enter your phone number</string>
+    <string name="error_empty_password">Please enter your password</string>
+    <string name="error_empty_confirmation">Please confirm your password</string>
+    <string name="error_invalid_phone">Invalid phone number!</string>
+    <string name="error_password_length">Password length must be at least 8.</string>
+    <string name="error_password_inconsistent">Passwords not matching!</string>
+
+    <!-- content descriptions -->
+    <string name="cd_restaurant_logo">Restaurant Logo</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+</resources>
