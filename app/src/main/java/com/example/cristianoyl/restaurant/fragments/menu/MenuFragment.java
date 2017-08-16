@@ -26,6 +26,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.Locale;
 
 public class MenuFragment extends Fragment {
@@ -34,7 +35,7 @@ public class MenuFragment extends Fragment {
 
     private Restaurant restaurant;
     private Menu[] menus;
-
+    private MenuAdapter menuAdapter;
     private ListView lv_menu;
 
     private OnFragmentInteractionListener mListener;
@@ -81,7 +82,7 @@ public class MenuFragment extends Fragment {
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onButtonPressed(v);
+                mListener.onBackButtonPressed();
             }
         });
         MenuAdapter.OnOrderChangeListener onOrderChangeListener = new MenuAdapter.OnOrderChangeListener() {
@@ -101,15 +102,23 @@ public class MenuFragment extends Fragment {
                 btnOrder.setText("$"+newSum);
             }
         };
+        btnOrder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    float orderSum = Float.parseFloat(btnOrder.getText().toString().substring(1)); // extract dollar sign
+                    if ( orderSum - restaurant.limit > 0.01f ) {    // consider error of float
+                        // order exceeds delivery minimum requirement
+                        mListener.onViewOrder(restaurant, menuAdapter.orderMap);
+                    }
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
         loadMenu(restaurant.id,onOrderChangeListener);
         return view;
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(View view) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(view);
-        }
     }
 
     @Override
@@ -129,19 +138,9 @@ public class MenuFragment extends Fragment {
         mListener = null;
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(View view);
+        void onBackButtonPressed();
+        void onViewOrder(Restaurant restaurant, HashMap<Menu,Integer> orderMap);
     }
 
     private void loadMenu(int restaurantID, final MenuAdapter.OnOrderChangeListener onOrderChangeListener){
@@ -171,8 +170,8 @@ public class MenuFragment extends Fragment {
                             Menu menu = new Menu(id,rid,name,category,description,price,spicy,isAvailable,isRecommended);
                             menus[i] = menu;
                         }
-
-                        lv_menu.setAdapter(new MenuAdapter(getContext(),menus,onOrderChangeListener));
+                        menuAdapter = new MenuAdapter(getContext(),menus,onOrderChangeListener);
+                        lv_menu.setAdapter(menuAdapter);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Toast.makeText(getContext(), response, Toast.LENGTH_SHORT).show();

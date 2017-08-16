@@ -10,9 +10,13 @@ import android.widget.Toast;
 
 import com.example.cristianoyl.restaurant.R;
 import com.example.cristianoyl.restaurant.fragments.menu.MenuFragment;
+import com.example.cristianoyl.restaurant.fragments.order.OrderFragment;
 import com.example.cristianoyl.restaurant.fragments.restaurant.RestaurantFragment;
+import com.example.cristianoyl.restaurant.models.Menu;
 import com.example.cristianoyl.restaurant.models.Restaurant;
 import com.example.cristianoyl.restaurant.utils.Constants;
+
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity
         implements RestaurantFragment.OnRestaurantClickListener,
@@ -46,9 +50,22 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onFragmentInteraction(View view) {
-        if ( view.getId() == R.id.btn_back ) {
-            onBackPressed();
-        }
+    public void onViewOrder(Restaurant restaurant, HashMap<Menu,Integer> orderMap) {
+        viewOrderPage(restaurant, orderMap);
+    }
+
+    @Override
+    public void onBackButtonPressed() {
+        onBackPressed();
+    }
+
+
+    private void viewOrderPage(Restaurant restaurant, HashMap<Menu,Integer> orderMap){
+        OrderFragment orderFragment = OrderFragment.newInstance(restaurant, orderMap);
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.frame_content,orderFragment, Constants.FRAGMENT_ORDER);
+        transaction.addToBackStack(null);
+        transaction.commit();
     }
 }

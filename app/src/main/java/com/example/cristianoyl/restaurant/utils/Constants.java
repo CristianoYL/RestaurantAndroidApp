@@ -64,4 +64,8 @@ public class Constants {
     // fragment tags
     public static final String FRAGMENT_RESTAURANT= "restaurant_fragment";
     public static final String FRAGMENT_MENU= "menu_fragment";
+    public static final String FRAGMENT_ORDER= "order_fragment";
+
+    // app configs
+    public static final double TAX_RATE= 0.07;
 }

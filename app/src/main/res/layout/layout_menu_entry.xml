@@ -133,7 +133,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="start"
-            android:text="A brief description of this dish goes here." />
+            android:fontFamily="monospace"
+            android:text="A brief description of this dish goes here."
+            android:textAlignment="center"
+            android:textStyle="italic" />
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

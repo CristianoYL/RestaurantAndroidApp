@@ -7,7 +7,8 @@ package com.example.cristianoyl.restaurant.request;
  */
 
 public class EndPoints {
-    private static final String URL_LOCAL = "http://192.168.1.5:5000";
+    private static final String URL_LOCAL = "http://192.168.1.8:5000";
+    private static final String URL_CHANG = "http://192.168.0.106:5000";
     private static final String URL_HEROKU = "";
     private static final String URL = URL_LOCAL;
 

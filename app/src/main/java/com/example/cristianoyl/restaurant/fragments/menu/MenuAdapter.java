@@ -10,7 +10,6 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.cristianoyl.restaurant.R;
@@ -29,7 +28,7 @@ public class MenuAdapter extends BaseAdapter {
     private Menu[] menus;
     private ArrayList<String> categories;
     private ArrayList<ArrayList<Menu>> categoryMenu;
-    private HashMap<Menu,Integer> orderMap;
+    HashMap<Menu,Integer> orderMap;
     private OnOrderChangeListener onOrderChangeListener;
 
     public MenuAdapter(Context context, Menu[] menus, OnOrderChangeListener onOrderChangeListener) {
@@ -97,6 +96,9 @@ public class MenuAdapter extends BaseAdapter {
         }
         viewHolder.tvCategory.setText(categories.get(position));
         viewHolder.tvCategory.setPaintFlags(viewHolder.tvCategory.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+
+        ViewGroup insertPoint = viewHolder.layoutMenu;
+        insertPoint.removeAllViews();
         for ( int i = 0; i < getItem(position).size(); i++ ) {
             final Menu menu = getItem(position).get(i);
             //fill the category menu
@@ -132,6 +134,7 @@ public class MenuAdapter extends BaseAdapter {
                 @Override
                 public void onClick(View v) {
                     orderMap.put(menu,orderMap.get(menu) + 1);
+                    notifyDataSetChanged();
                     tvAmount.setText(String.valueOf(orderMap.get(menu)));
                     onOrderChangeListener.addOrder(menu);
                 }
@@ -143,6 +146,7 @@ public class MenuAdapter extends BaseAdapter {
                     int amount = orderMap.get(menu);
                     if ( amount > 0 ) {
                         orderMap.put(menu,--amount);
+                        notifyDataSetChanged();
                         tvAmount.setText(String.valueOf(orderMap.get(menu)));
                         onOrderChangeListener.removeOrder(menu);
                     }
@@ -152,7 +156,6 @@ public class MenuAdapter extends BaseAdapter {
 
 
             // insert into main view
-            ViewGroup insertPoint = viewHolder.layoutMenu;
             insertPoint.addView(v, i, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
 

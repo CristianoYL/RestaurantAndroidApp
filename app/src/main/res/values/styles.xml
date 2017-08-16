@@ -9,10 +9,28 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="ButtonLight">
+    <style name="ButtonAccent">
         <item name="android:paddingLeft">10dp</item>
         <item name="android:paddingRight">10dp</item>
         <item name="android:background">@drawable/edge_dark_rounded</item>
         <item name="android:textColor">@color/colorAccent</item>
+    </style>
+
+    <style name="ButtonGreen">
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+        <item name="android:background">@drawable/edge_green_rounded</item>
+        <item name="android:textColor">@color/colorGreen</item>
+    </style>
+
+    <style name="LayoutCard">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:background">@drawable/edge_dark_rounded</item>
     </style>
 </resources>
