@@ -1,7 +1,10 @@
 package com.example.cristianoyl.restaurant.fragments.order;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
@@ -9,12 +12,18 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,7 +45,9 @@ import com.google.gson.Gson;
 
 import com.google.android.gms.maps.SupportMapFragment;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -57,6 +68,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
     private Restaurant restaurant;
     private HashMap<Menu,Integer> orderMap;
+    private TextView tvAddress;
+    private List<String> addressList;
 
     private OnFragmentInteractionListener mListener;
 
@@ -69,7 +82,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
     // A default location (Sydney, Australia) and default zoom to use when location permission is
     // not granted.
-    private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
+    private final LatLng mDefaultLocation = new LatLng(40.5233403,-74.4588031);
     private static final int DEFAULT_ZOOM = 16;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private boolean mLocationPermissionGranted;
@@ -122,6 +135,15 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             mLastKnownLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        if (mMap != null) {
+            outState.putParcelable(KEY_CAMERA_POSITION, mMap.getCameraPosition());
+            outState.putParcelable(KEY_LOCATION, mLastKnownLocation);
+        }
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -192,20 +214,66 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
         // delivery address
         // manual input
-        TextView tvAddress = (TextView) view.findViewById(R.id.tv_address);
+        tvAddress = (TextView) view.findViewById(R.id.tv_address);
+
+        tvAddress.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_address,null);
+                final EditText etAddress = (EditText) view.findViewById(R.id.et_address);
+                ListView lvAddress = (ListView) view.findViewById(R.id.lv_address);
+                etAddress.setText(tvAddress.getText().toString());
+                if ( addressList != null ) {
+                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),android.R.layout.simple_list_item_1,addressList);
+                    lvAddress.setAdapter(adapter);
+                    lvAddress.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
+                    lvAddress.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                        @Override
+                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                            etAddress.setText(parent.getItemAtPosition(position).toString());
+                        }
+                    });
+                }
+                builder.setView(view);
+                builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        tvAddress.setText(etAddress.getText().toString());
+                    }
+                });
+                builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing, simply dismiss the dialog
+                    }
+                });
+                builder.show();
+            }
+        });
+
         // Build the Play services client for use by the Fused Location Provider and the Places API.
         // Use the addApi() method to request the Google Places API and the Fused Location Provider.
-        mGoogleApiClient = new GoogleApiClient.Builder(getContext())
-                .enableAutoManage(getActivity() /* FragmentActivity */,
-                        this /* OnConnectionFailedListener */)
-                .addConnectionCallbacks(this)
-                .addApi(LocationServices.API)
-                .addApi(Places.GEO_DATA_API)
-                .addApi(Places.PLACE_DETECTION_API)
-                .build();
+        if ( mGoogleApiClient == null ) {
+            mGoogleApiClient = new GoogleApiClient.Builder(getContext())
+                    .enableAutoManage(getActivity() /* FragmentActivity */,
+                            this /* OnConnectionFailedListener */)
+                    .addConnectionCallbacks(this)
+                    .addApi(LocationServices.API)
+                    .addApi(Places.GEO_DATA_API)
+                    .addApi(Places.PLACE_DETECTION_API)
+                    .build();
+        }
         mGoogleApiClient.connect();
         mMapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.frame_map);
         return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mGoogleApiClient.stopAutoManage(getActivity());
+        mGoogleApiClient.disconnect();
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -303,6 +371,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(mLastKnownLocation.getLatitude(),
                             mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
+            addressList = getCompleteAddressString(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),5);
+            tvAddress.setText(addressList.get(0));
         } else {
             Log.d(TAG, "Current location is null. Using defaults.");
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
@@ -336,6 +406,14 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         if (mLocationPermissionGranted) {
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
+            mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+                @Override
+                public boolean onMyLocationButtonClick() {
+                    getDeviceLocation();
+                    return false;
+                }
+            });
+
         } else {
             mMap.setMyLocationEnabled(false);
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
@@ -389,6 +467,33 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // be returned in onConnectionFailed.
         Log.d(TAG, "Play services connection failed: ConnectionResult.getErrorCode() = "
                 + result.getErrorCode());
+    }
+
+    private List<String> getCompleteAddressString(double latitude, double longitude, int count) {
+        Log.d("TEST","Get address for " + latitude + "," + longitude);
+        Geocoder geocoder = new Geocoder(getContext(), Locale.getDefault());
+        ArrayList<String> addressList = new ArrayList<>(count);
+        try {
+            List<Address> addresses = geocoder.getFromLocation(latitude, longitude, count);
+            if (addresses != null) {
+                for ( Address address : addresses ) {
+                    StringBuilder strReturnedAddress = new StringBuilder("");
+
+                    for (int i = 0; i <= address.getMaxAddressLineIndex(); i++) {
+                        strReturnedAddress.append(address.getAddressLine(i)).append("\n");
+                    }
+                    strReturnedAddress.deleteCharAt(strReturnedAddress.length()-1);
+                    addressList.add(strReturnedAddress.toString());
+                    Log.w(TAG, "Resolved address:" + strReturnedAddress.toString());
+                }
+            } else {
+                Log.e(TAG, "No Address returned!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.w(TAG, "Cannot get Address!");
+        }
+        return addressList;
     }
 
     /**
