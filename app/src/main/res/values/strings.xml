@@ -42,5 +42,6 @@
     <string name="label_payment_method">Payment Method</string>
     <string name="label_contact_phone">Contact Phone Number</string>
     <string name="label_place_order">Place Order</string>
+    <string name="label_suggested_address">Suggested current locations:</string>
 
 </resources>
