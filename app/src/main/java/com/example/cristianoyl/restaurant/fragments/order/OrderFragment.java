@@ -2,17 +2,25 @@ package com.example.cristianoyl.restaurant.fragments.order;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.telephony.PhoneNumberUtils;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +38,7 @@ import android.widget.Toast;
 import com.example.cristianoyl.restaurant.R;
 import com.example.cristianoyl.restaurant.models.Menu;
 import com.example.cristianoyl.restaurant.models.Restaurant;
+import com.example.cristianoyl.restaurant.services.FetchAddressIntentService;
 import com.example.cristianoyl.restaurant.utils.Constants;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -41,14 +50,18 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
 import com.google.android.gms.maps.SupportMapFragment;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+
+import static com.example.cristianoyl.restaurant.R.id.lv_address;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -68,10 +81,12 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
     private Restaurant restaurant;
     private HashMap<Menu,Integer> orderMap;
-    private TextView tvAddress;
-    private List<String> addressList;
+    private TextView tvAddress, tvPhone;
+    private ListView lvAddress;
+    private List<String> strAddressList;
 
     private OnFragmentInteractionListener mListener;
+    private AddressResultReceiver mResultReceiver;
 
     private GoogleMap mMap;
     private SupportMapFragment mMapFragment;
@@ -83,7 +98,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     // A default location (Sydney, Australia) and default zoom to use when location permission is
     // not granted.
     private final LatLng mDefaultLocation = new LatLng(40.5233403,-74.4588031);
-    private static final int DEFAULT_ZOOM = 16;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private boolean mLocationPermissionGranted;
 
@@ -94,13 +108,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     // Keys for storing activity state.
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
-
-    // Used for selecting the current place.
-    private final int mMaxEntries = 5;
-    private String[] mLikelyPlaceNames = new String[mMaxEntries];
-    private String[] mLikelyPlaceAddresses = new String[mMaxEntries];
-    private String[] mLikelyPlaceAttributions = new String[mMaxEntries];
-    private LatLng[] mLikelyPlaceLatLngs = new LatLng[mMaxEntries];
 
     public OrderFragment() {
         // Required empty public constructor
@@ -113,7 +120,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
      * @param orderMap a map of menu and its order sum.
      * @return A new instance of fragment OrderFragment.
      */
-    // TODO: Rename and change types and number of parameters
     public static OrderFragment newInstance(Restaurant restaurant, HashMap<Menu,Integer> orderMap) {
         OrderFragment fragment = new OrderFragment();
         Bundle args = new Bundle();
@@ -156,7 +162,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         tvRestaurantName.setText(restaurant.name);
 
         LinearLayout layout_orders = (LinearLayout) view.findViewById(R.id.layout_orders);
-        ViewGroup insertPoint = layout_orders;
         int i = 1;  // below the "order summary" TextView
         float total = 0;
         for ( Menu menu : orderMap.keySet() ) {
@@ -170,7 +175,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 float itemSum = menu.price * orderMap.get(menu);
                 total += itemSum;
                 tv_sum.setText("$" + itemSum);
-                insertPoint.addView(v, i++, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                layout_orders.addView(v, i++, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             }
         }
 
@@ -216,16 +221,18 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // manual input
         tvAddress = (TextView) view.findViewById(R.id.tv_address);
 
+        // show a popup dialog window when clicking the tvAddress
         tvAddress.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                 View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_address,null);
                 final EditText etAddress = (EditText) view.findViewById(R.id.et_address);
-                ListView lvAddress = (ListView) view.findViewById(R.id.lv_address);
+                lvAddress = (ListView) view.findViewById(lv_address);
                 etAddress.setText(tvAddress.getText().toString());
-                if ( addressList != null ) {
-                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),android.R.layout.simple_list_item_1,addressList);
+                // if there is location info available, show all the (5) possible suggestions in the ListView
+                if ( strAddressList != null ) {
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),android.R.layout.simple_list_item_1, strAddressList);
                     lvAddress.setAdapter(adapter);
                     lvAddress.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
                     lvAddress.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -236,10 +243,76 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                     });
                 }
                 builder.setView(view);
+                mResultReceiver = new AddressResultReceiver(new Handler());
+                // add a OnTextChangedListener and modifies the suggestion list according to user input
+                etAddress.addTextChangedListener(new TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence s, int start, int before, int count) {
+                        // update lvAddress according to input address, show 5 possible addresses in the list
+                        getAddressFromString(s.toString());
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable s) {
+
+                    }
+                });
+
                 builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         tvAddress.setText(etAddress.getText().toString());
+                        mMap.clear();
+                        try {
+                            List<Address> addressList = new Geocoder(getContext(),Locale.getDefault())
+                                    .getFromLocationName(tvAddress.getText().toString(),1);
+                            if ( addressList != null && addressList.size() == 1 ) {
+                                LatLng latLng = new LatLng(
+                                        addressList.get(0).getLatitude(),
+                                        addressList.get(0).getLongitude());
+                                mCameraPosition = CameraPosition.fromLatLngZoom(latLng,Constants.DEFAULT_ZOOM);
+                                mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
+                                mMap.addMarker(new MarkerOptions().position(latLng).title(tvAddress.getText().toString()));
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+                builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing, simply dismiss the dialog
+                    }
+                });
+                builder.show();
+            }
+        });
+
+        tvPhone = (TextView) view.findViewById(R.id.tv_phone);
+        tvPhone.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_phone,null);
+                final EditText etPhone = (EditText) view.findViewById(R.id.et_phone);
+                if ( !tvPhone.getText().toString().equals(getString(R.string.label_contact_phone)) ) {
+                    etPhone.setText(tvPhone.getText().toString());
+                }
+                builder.setView(view);
+                builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            tvPhone.setText(PhoneNumberUtils.formatNumber(etPhone.getText().toString(),Locale.getDefault().getCountry()));
+                        } else {
+                            tvPhone.setText(PhoneNumberUtils.formatNumber(etPhone.getText().toString()));
+                        }
                     }
                 });
                 builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
@@ -370,12 +443,17 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         } else if (mLastKnownLocation != null) {
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(mLastKnownLocation.getLatitude(),
-                            mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
-            addressList = getCompleteAddressString(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),5);
-            tvAddress.setText(addressList.get(0));
+                            mLastKnownLocation.getLongitude()), Constants.DEFAULT_ZOOM));
+            strAddressList = getCompleteAddressString(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),5);
+            if ( strAddressList.size() > 0 ) {
+                tvAddress.setText(strAddressList.get(0));
+            } else {
+                Toast.makeText(getContext(), "Location info unavailable, please try again.", Toast.LENGTH_SHORT).show();
+            }
+
         } else {
             Log.d(TAG, "Current location is null. Using defaults.");
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, Constants.DEFAULT_ZOOM));
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
     }
@@ -509,5 +587,71 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
+    }
+
+    /**
+     *  start an IntentService to query for a Address using a String
+     * @param queryAddress  the string that contains the address info
+     */
+    private void getAddressFromString(String queryAddress) {
+        Log.d(TAG,"Searching for address:" + queryAddress);
+//        try {
+//            return new Geocoder(getContext()).getFromLocationName(
+//                    queryAddress,5);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return new ArrayList<>();
+        // Create an intent for passing to the intent service responsible for fetching the address.
+        Intent intent = new Intent(getActivity(), FetchAddressIntentService.class);
+
+        // Pass the result receiver as an extra to the service.
+        intent.putExtra(Constants.RECEIVER, mResultReceiver);
+
+        // Pass the location data as an extra to the service.
+        intent.putExtra(Constants.ADDRESS_DATA_EXTRA,queryAddress);
+
+        // Start the service. If the service isn't already running, it is instantiated and started
+        // (creating a process for it if needed); if it is running then it remains running. The
+        // service kills itself automatically once all intents are processed.
+        getActivity().startService(intent);
+    }
+    private class AddressResultReceiver extends ResultReceiver {
+        AddressResultReceiver(Handler handler) {
+            super(handler);
+        }
+
+        /**
+         *  Receives data sent from FetchAddressIntentService and updates the UI in MainActivity.
+         */
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            Log.d(TAG,"Result received:("+resultCode+") "+resultData);
+
+            if (resultCode == Constants.SUCCESS_RESULT) {
+                List<Address> addressList = resultData.getParcelableArrayList(Constants.RESULT_DATA_KEY);
+                if ( addressList == null ) {
+                    return;
+                }
+                ArrayList<String> addresses = new ArrayList<>(5);
+                for ( Address address : addressList ) {
+                    ArrayList<String> addressLines = new ArrayList<>();
+                    for ( int i = 0; i <= address.getMaxAddressLineIndex(); i++ ) {
+                        addressLines.add(address.getAddressLine(i));
+                    }
+                    String addressName = TextUtils.join(System.getProperty("line.separator"),addressLines);
+                    addresses.add(addressName);
+                }
+                lvAddress.setAdapter(new ArrayAdapter<>(
+                        getContext(),android.R.layout.simple_list_item_1,addresses
+                ));
+                lvAddress.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
+            } else {
+                String errorMessage = resultData.getString(Constants.RESULT_DATA_KEY);
+                Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+            }
+
+            // Reset. Enable the Fetch Address button and stop showing the progress bar.
+        }
     }
 }

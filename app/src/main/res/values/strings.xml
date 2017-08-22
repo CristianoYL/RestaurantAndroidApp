@@ -23,6 +23,13 @@
     <string name="error_password_length">Password length must be at least 8.</string>
     <string name="error_password_inconsistent">Passwords not matching!</string>
 
+    <!-- location service related messages -->
+    <string name="address_found">Requested address found.</string>
+    <string name="no_address_found">Requested address not found.</string>
+    <string name="invalid_lat_long_used">The input latitude/longitude is invalid.</string>
+    <string name="location_service_not_available">The location service is not available.</string>
+    <string name="no_location_data_provided">No location data provided.</string>
+
     <!-- content descriptions -->
     <string name="cd_restaurant_logo">Restaurant Logo</string>
 
