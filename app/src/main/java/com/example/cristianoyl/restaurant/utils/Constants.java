@@ -68,4 +68,13 @@ public class Constants {
 
     // app configs
     public static final double TAX_RATE= 0.07;
+
+    // Location service related values
+    public static final int SUCCESS_RESULT = 0;
+    public static final int FAILURE_RESULT = 1;
+    public static final String RECEIVER = "RECEIVER";
+    public static final String RESULT_DATA_KEY = "RESULT_DATA_KEY";
+    public static final String LOCATION_DATA_EXTRA = "LOCATION_DATA_EXTRA";
+    public static final String ADDRESS_DATA_EXTRA = "ADDRESS_DATA_EXTRA";
+    public static final float DEFAULT_ZOOM = 16;
 }
