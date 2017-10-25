@@ -9,6 +9,8 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.example.cristianoyl.restaurant.R;
+import com.example.cristianoyl.restaurant.fragments.card.CardFragment;
+import com.example.cristianoyl.restaurant.fragments.card.dummy.DummyContent;
 import com.example.cristianoyl.restaurant.fragments.menu.MenuFragment;
 import com.example.cristianoyl.restaurant.fragments.order.OrderFragment;
 import com.example.cristianoyl.restaurant.fragments.restaurant.RestaurantFragment;
@@ -20,7 +22,9 @@ import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity
         implements RestaurantFragment.OnRestaurantClickListener,
-                    MenuFragment.OnFragmentInteractionListener{
+                    MenuFragment.OnFragmentInteractionListener,
+                    OrderFragment.OnOrderFragmentInteractionListener,
+                    CardFragment.OnCardFragmentInteractionListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,5 +71,25 @@ public class MainActivity extends AppCompatActivity
         transaction.replace(R.id.frame_content,orderFragment, Constants.FRAGMENT_ORDER);
         transaction.addToBackStack(null);
         transaction.commit();
+    }
+
+    @Override
+    public void onChooseCard() {
+        CardFragment cardFragment = CardFragment.newInstance(0);
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.frame_content,cardFragment, Constants.FRAGMENT_CARD);
+        transaction.addToBackStack(null);
+        transaction.commit();
+    }
+
+    @Override
+    public void onCardSelected(DummyContent.DummyItem item) {
+        
+    }
+
+    @Override
+    public void onCreateCard(DummyContent.DummyItem item) {
+
     }
 }

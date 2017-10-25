@@ -66,7 +66,7 @@ import static com.example.cristianoyl.restaurant.R.id.lv_address;
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link OrderFragment.OnFragmentInteractionListener} interface
+ * {@link OnOrderFragmentInteractionListener} interface
  * to handle interaction events.
  * Use the {@link OrderFragment#newInstance} factory method to
  * create an instance of this fragment.
@@ -85,7 +85,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private ListView lvAddress;
     private List<String> strAddressList;
 
-    private OnFragmentInteractionListener mListener;
+    private OnOrderFragmentInteractionListener mListener;
     private AddressResultReceiver mResultReceiver;
 
     private GoogleMap mMap;
@@ -325,6 +325,16 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
+        TextView tvCard = view.findViewById(R.id.tv_card);
+        tvCard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mListener != null) {
+                    mListener.onChooseCard();
+                }
+            }
+        });
+
         // Build the Play services client for use by the Fused Location Provider and the Places API.
         // Use the addApi() method to request the Google Places API and the Fused Location Provider.
         if ( mGoogleApiClient == null ) {
@@ -349,21 +359,14 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         mGoogleApiClient.disconnect();
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
-
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof OnOrderFragmentInteractionListener) {
+            mListener = (OnOrderFragmentInteractionListener) context;
         } else {
 //            throw new RuntimeException(context.toString()
-//                    + " must implement OnFragmentInteractionListener");
+//                    + " must implement OnOrderFragmentInteractionListener");
         }
     }
 
@@ -584,9 +587,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
      */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+    public interface OnOrderFragmentInteractionListener {
+        void onChooseCard();
     }
 
     /**
