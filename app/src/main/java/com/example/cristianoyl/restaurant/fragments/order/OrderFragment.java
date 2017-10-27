@@ -578,20 +578,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     }
 
     /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnOrderFragmentInteractionListener {
-        void onChooseCard();
-    }
-
-    /**
      *  start an IntentService to query for a Address using a String
      * @param queryAddress  the string that contains the address info
      */
@@ -618,11 +604,11 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // service kills itself automatically once all intents are processed.
         getActivity().startService(intent);
     }
+
     private class AddressResultReceiver extends ResultReceiver {
         AddressResultReceiver(Handler handler) {
             super(handler);
         }
-
         /**
          *  Receives data sent from FetchAddressIntentService and updates the UI in MainActivity.
          */
@@ -655,5 +641,13 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
             // Reset. Enable the Fetch Address button and stop showing the progress bar.
         }
+
+    }
+
+    /**
+     *  The context must implement this interface to perform UI interaction on this fragment
+     */
+    public interface OnOrderFragmentInteractionListener {
+        void onChooseCard();    // goto the payment method selection page
     }
 }

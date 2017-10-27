@@ -8,9 +8,9 @@ package com.example.cristianoyl.restaurant.request;
 
 public class EndPoints {
     private static final String URL_LOCAL = "http://192.168.1.13:5000";
-    private static final String URL_CHANG = "http://192.168.0.103:5000";
+    private static final String URL_CHANG = "http://192.168.0.102:5000";
     private static final String URL_HEROKU = "";
-    private static final String URL = URL_LOCAL;
+    private static final String URL = URL_CHANG;
 
     // login
     public static String urlLogin(){
