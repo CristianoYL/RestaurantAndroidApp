@@ -7,7 +7,6 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,6 +27,7 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -54,6 +54,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
 import com.google.android.gms.maps.SupportMapFragment;
+import com.stripe.android.model.Source;
+import com.stripe.android.model.SourceCardData;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -81,7 +83,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
     private Restaurant restaurant;
     private HashMap<Menu,Integer> orderMap;
-    private TextView tvAddress, tvPhone;
+    private TextView tvMessage, tvCoupon, tvAddress, tvPhone, tvPaymentMethod;
     private ListView lvAddress;
     private List<String> strAddressList;
 
@@ -109,6 +111,9 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
 
+    // Values stored in activity state
+    private String message, coupon, phone, address, paymentMethod;
+
     public OrderFragment() {
         // Required empty public constructor
     }
@@ -132,6 +137,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG,"Test");
         if (getArguments() != null) {
             restaurant = new Gson().fromJson(getArguments().getString(ARG_RESTAURANT),Restaurant.class);
             orderMap = (HashMap<Menu,Integer>) getArguments().getSerializable(ARG_ORDER_MAP);
@@ -140,6 +146,12 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         if (savedInstanceState != null) {
             mLastKnownLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
+//            tvMessage.setText(savedInstanceState.getString(KEY_MESSAGE));
+//            tvCoupon.setText(savedInstanceState.getString(KEY_COUPON));
+//            tvPhone.setText(savedInstanceState.getString(KEY_PHONE));
+//            tvAddress.setText(savedInstanceState.getString(KEY_LOCATION));
+//            tvPaymentMethod.setText(savedInstanceState.getString(KEY_PAYMENT_METHOD));
+//            Log.d(TAG,"Restoring Phone = " + tvPhone.getText());
         }
     }
 
@@ -149,7 +161,18 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             outState.putParcelable(KEY_CAMERA_POSITION, mMap.getCameraPosition());
             outState.putParcelable(KEY_LOCATION, mLastKnownLocation);
         }
+//        outState.putString(KEY_MESSAGE,tvMessage.getText().toString());
+//        outState.putString(KEY_COUPON,tvCoupon.getText().toString());
+//        outState.putString(KEY_PHONE,tvPhone.getText().toString());
+//        outState.putString(KEY_LOCATION,tvAddress.getText().toString());
+//        outState.putString(KEY_PAYMENT_METHOD,tvPaymentMethod.getText().toString());
+//        Log.d(TAG,"storing Phone = " + tvPhone.getText());
         super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
     }
 
     @Override
@@ -158,8 +181,16 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_order, container, false);
 
-        TextView tvRestaurantName = (TextView) view.findViewById(R.id.tv_name);
+        TextView tvRestaurantName = view.findViewById(R.id.tv_name);
         tvRestaurantName.setText(restaurant.name);
+
+        Button btnBack = view.findViewById(R.id.btn_back);
+        btnBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.onBackButtonPressed();
+            }
+        });
 
         LinearLayout layout_orders = (LinearLayout) view.findViewById(R.id.layout_orders);
         int i = 1;  // below the "order summary" TextView
@@ -179,7 +210,10 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         }
 
-        TextView tvMessage = (TextView) view.findViewById(R.id.tv_message);
+        tvMessage = view.findViewById(R.id.tv_message);
+        if ( message != null ) {
+            tvMessage.setText(message);
+        }
         tvMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -187,7 +221,10 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
-        TextView tvCoupon = (TextView) view.findViewById(R.id.tv_coupon);
+        tvCoupon = view.findViewById(R.id.tv_coupon);
+        if ( coupon != null ) {
+            tvCoupon.setText(coupon);
+        }
         tvCoupon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -219,7 +256,10 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
         // delivery address
         // manual input
-        tvAddress = (TextView) view.findViewById(R.id.tv_address);
+        tvAddress = view.findViewById(R.id.tv_address);
+        if ( address != null ) {
+            tvAddress.setText(address);
+        }
 
         // show a popup dialog window when clicking the tvAddress
         tvAddress.setOnClickListener(new View.OnClickListener() {
@@ -227,8 +267,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                 View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_address,null);
-                final EditText etAddress = (EditText) view.findViewById(R.id.et_address);
-                lvAddress = (ListView) view.findViewById(lv_address);
+                final EditText etAddress = view.findViewById(R.id.et_address);
+                lvAddress = view.findViewById(lv_address);
                 etAddress.setText(tvAddress.getText().toString());
                 // if there is location info available, show all the (5) possible suggestions in the ListView
                 if ( strAddressList != null ) {
@@ -267,6 +307,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         tvAddress.setText(etAddress.getText().toString());
+                        address = tvAddress.getText().toString();
                         mMap.clear();
                         try {
                             List<Address> addressList = new Geocoder(getContext(),Locale.getDefault())
@@ -294,13 +335,16 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
-        tvPhone = (TextView) view.findViewById(R.id.tv_phone);
+        tvPhone = view.findViewById(R.id.tv_phone);
+        if ( phone != null ) {
+            tvPhone.setText(phone);
+        }
         tvPhone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                 View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_phone,null);
-                final EditText etPhone = (EditText) view.findViewById(R.id.et_phone);
+                final EditText etPhone = (EditText) view.findViewById(R.id.et_email);
                 if ( !tvPhone.getText().toString().equals(getString(R.string.label_contact_phone)) ) {
                     etPhone.setText(tvPhone.getText().toString());
                 }
@@ -313,6 +357,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                         } else {
                             tvPhone.setText(PhoneNumberUtils.formatNumber(etPhone.getText().toString()));
                         }
+                        phone = tvPhone.getText().toString();
                     }
                 });
                 builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
@@ -325,8 +370,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
-        TextView tvCard = view.findViewById(R.id.tv_card);
-        tvCard.setOnClickListener(new View.OnClickListener() {
+        tvPaymentMethod = view.findViewById(R.id.tv_card);
+        tvPaymentMethod.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mListener != null) {
@@ -396,10 +441,10 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 View infoWindow = getActivity().getLayoutInflater().inflate(R.layout.custom_info_contents,
                         (FrameLayout) getActivity().findViewById(R.id.frame_map), false);
 
-                TextView title = ((TextView) infoWindow.findViewById(R.id.title));
+                TextView title = (infoWindow.findViewById(R.id.title));
                 title.setText(marker.getTitle());
 
-                TextView snippet = ((TextView) infoWindow.findViewById(R.id.snippet));
+                TextView snippet = (infoWindow.findViewById(R.id.snippet));
                 snippet.setText(marker.getSnippet());
 
                 return infoWindow;
@@ -644,10 +689,27 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
 
     }
 
+    public void updateSelectedPaymentMethod(Source source){
+        if ( source != null ) {
+            if ( Source.CARD.equals(source.getType())) { // user selected a card as payment source
+                SourceCardData cardData = (SourceCardData) source.getSourceTypeModel();
+                String selectedCardInfo = cardData.getBrand() + " ending in " + cardData.getLast4();
+                tvPaymentMethod.setText(selectedCardInfo);
+            } else {
+                // TODO: implement other payment methods first
+                Log.d(TAG,"Source type = " + source.getType());
+                tvPaymentMethod.setText(R.string.title_payment_method);
+            }
+        } else {
+            tvPaymentMethod.setText(R.string.title_payment_method);
+        }
+    }
+
     /**
      *  The context must implement this interface to perform UI interaction on this fragment
      */
     public interface OnOrderFragmentInteractionListener {
         void onChooseCard();    // goto the payment method selection page
+        void onBackButtonPressed();
     }
 }

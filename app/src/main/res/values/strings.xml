@@ -2,7 +2,7 @@
     <string name="app_name">Hunan Manor</string>
 
     <!-- hints-->
-    <string name="hint_phone_num">Phone Number</string>
+    <string name="hint_email">Email</string>
     <string name="hint_password">Password</string>
     <string name="hint_password_confirm">Confirm Password</string>
 
@@ -14,12 +14,13 @@
     <string name="btn_confirm">Confirm</string>
     <string name="btn_ok">OK</string>
     <string name="btn_back">Back</string>
+    <string name="btn_add_card">Add a new card</string>
 
     <!-- error messages -->
-    <string name="error_empty_username">Please enter your phone number</string>
+    <string name="error_empty_username">Please enter your email address</string>
     <string name="error_empty_password">Please enter your password</string>
     <string name="error_empty_confirmation">Please confirm your password</string>
-    <string name="error_invalid_phone">Invalid phone number!</string>
+    <string name="error_invalid_email">Invalid email address, please check again.</string>
     <string name="error_password_length">Password length must be at least 8.</string>
     <string name="error_password_inconsistent">Passwords not matching!</string>
 
@@ -50,5 +51,9 @@
     <string name="label_contact_phone">Contact Phone Number</string>
     <string name="label_place_order">Place Order</string>
     <string name="label_suggested_address">Suggested current locations:</string>
+    <string name="label_card_number">Ending in:</string>
+
+    <!-- title text -->
+    <string name="title_payment_method">Select Payment Method</string>
 
 </resources>

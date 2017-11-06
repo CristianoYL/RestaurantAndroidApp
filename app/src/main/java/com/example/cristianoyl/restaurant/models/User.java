@@ -8,12 +8,18 @@ import com.google.gson.Gson;
 
 public class User {
     int id;
-    String phone, password;
+    String stripeID, email, phone, password;
 
-    public User(int id, String phone, String password) {
+    public User(int id, String stripeID, String email, String phone, String password) {
         this.id = id;
+        this.stripeID = stripeID;
+        this.email = email;
         this.phone = phone;
         this.password = password;
+    }
+
+    public User(String email, String password){
+        this(0,null,email,null,password);
     }
 
     public String toJson(){
@@ -21,6 +27,6 @@ public class User {
     }
 
     public String toCredentialJson(){
-        return new Credential(phone,password).toJson();
+        return new Credential(email,password).toJson();
     }
 }

@@ -17,9 +17,9 @@
         <EditText
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/et_phone"
+            android:id="@+id/et_email"
             android:hint="@string/label_contact_phone"
-            android:inputType="textPhonetic"
+            android:inputType="phone"
             android:imeOptions="actionDone"/>
     </android.support.design.widget.TextInputLayout>
 

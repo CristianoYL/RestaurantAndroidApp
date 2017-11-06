@@ -16,6 +16,11 @@ public class Constants {
     public static final String METHOD_PUT = "PUT";
     public static final String ACCESS_TOKEN = "access_token";
 
+    // stripe config
+    public static final String STRIPE_PUBLISHABLE_KEY = "pk_test_cvvvvcgwdJl04LlL1u7i97Pn";
+    public static final String EPHEMERAL_KEY = "ephemeral_key";
+    public static final String STRIPE_API_VERSION = "2017-08-15";
+
     // key words
     public static final String KEY_DESC = "description";
     public static final String KEY_MSG = "message";

@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -33,7 +32,6 @@ public class LoginActivity extends AppCompatActivity {
 
     private boolean isLogin = true;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,7 +39,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = (Button) findViewById(R.id.btn_login);
         btnRegister = (Button) findViewById(R.id.btn_register);
         btnGuest = (Button) findViewById(R.id.btn_guest);
-        etAccount = (EditText) findViewById(R.id.et_phone);
+        etAccount = (EditText) findViewById(R.id.et_email);
         etPassword = (EditText) findViewById(R.id.et_password);
         etPasswordConfirm = (EditText) findViewById(R.id.et_password_confirm);
         inputLayoutPassword = (TextInputLayout) findViewById(R.id.input_password);
@@ -86,9 +84,9 @@ public class LoginActivity extends AppCompatActivity {
 
     private void login(){
         if ( !TextUtils.isEmpty(etAccount.getText()) && !TextUtils.isEmpty(etPassword.getText()) ) {
-            String phone = etAccount.getText().toString();
+            String email = etAccount.getText().toString();
             String password = etPassword.getText().toString();
-            User user = new User(0,phone,password);
+            User user = new User(email,password);
             String url = EndPoints.urlLogin();
             RequestAction loginAction = new RequestAction() {
                 @Override
@@ -129,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
         if ( !TextUtils.isEmpty(etAccount.getText()) && !TextUtils.isEmpty(etPassword.getText())
                 && !TextUtils.isEmpty(etPasswordConfirm.getText()) ) {
             if ( etAccount.getText().toString().length() < 10 ) {   // check phone number
-                etAccount.setError(getString(R.string.error_invalid_phone));
+                etAccount.setError(getString(R.string.error_invalid_email));
                 etAccount.requestFocus();
                 return;
             }
@@ -145,7 +143,7 @@ public class LoginActivity extends AppCompatActivity {
             }
             String phone = etAccount.getText().toString();
             String password = etPassword.getText().toString();
-            User user = new User(0,phone,password);
+            User user = new User(phone,password);
             String url = EndPoints.urlUser();
             RequestAction registerAction = new RequestAction() {
                 @Override

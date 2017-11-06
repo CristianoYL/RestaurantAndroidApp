@@ -17,7 +17,19 @@ public class RequestHelper {
      * @param action the action to perform before/after the request
      */
     public static void sendGetRequest(String url, RequestAction action){
-        AsyncRequest asyncRequest = new AsyncRequest(url, Constants.METHOD_GET,null,action);
+        AsyncRequest asyncRequest = new AsyncRequest(null, url, Constants.METHOD_GET,null,action);
+        asyncRequest.execute();
+    }
+
+    /**
+     * send a GET request to the given url with params and JWT token,
+     * perform the actions if specified
+     * @param jwt the jwt token for authorization
+     * @param url the url to send the request to
+     * @param action the action to perform before/after the request
+     */
+    public static void sendGetRequest(String jwt, String url, RequestAction action){
+        AsyncRequest asyncRequest = new AsyncRequest(jwt, url, Constants.METHOD_GET,null,action);
         asyncRequest.execute();
     }
 
@@ -29,7 +41,20 @@ public class RequestHelper {
      * @param action the action to perform before/after the request
      */
     public static void sendPostRequest(String url, String jsonData, RequestAction action){
-        AsyncRequest asyncRequest = new AsyncRequest(url, Constants.METHOD_POST,jsonData,action);
+        AsyncRequest asyncRequest = new AsyncRequest(null, url, Constants.METHOD_POST,jsonData,action);
+        asyncRequest.execute();
+    }
+
+    /**
+     * send a POST request to the given url with params and JWT token,
+     * perform the actions if specified
+     * @param jwt the jwt token for authorization
+     * @param url the url to send the request to
+     * @param jsonData the params of the request in JSON format
+     * @param action the action to perform before/after the request
+     */
+    public static void sendPostRequest(String jwt, String url, String jsonData, RequestAction action){
+        AsyncRequest asyncRequest = new AsyncRequest(jwt, url, Constants.METHOD_POST,jsonData,action);
         asyncRequest.execute();
     }
 
@@ -41,7 +66,20 @@ public class RequestHelper {
      * @param action the action to perform before/after the request
      */
     public static void sendPutRequest(String url, String jsonData, RequestAction action){
-        AsyncRequest asyncRequest = new AsyncRequest(url, Constants.METHOD_PUT,jsonData,action);
+        AsyncRequest asyncRequest = new AsyncRequest(null, url, Constants.METHOD_PUT,jsonData,action);
+        asyncRequest.execute();
+    }
+
+    /**
+     * send a PUT request to the given url with params and JWT token,
+     * perform the actions if specified
+     * @param jwt the jwt token for authorization
+     * @param url the url to send the request to
+     * @param jsonData the params of the request in JSON format
+     * @param action the action to perform before/after the request
+     */
+    public static void sendPutRequest(String jwt, String url, String jsonData, RequestAction action){
+        AsyncRequest asyncRequest = new AsyncRequest(jwt, url, Constants.METHOD_PUT,jsonData,action);
         asyncRequest.execute();
     }
 
@@ -53,12 +91,20 @@ public class RequestHelper {
      * @param action the action to perform before/after the request
      */
     public static void sendDelRequest(String url, String jsonData, RequestAction action){
-        AsyncRequest asyncRequest = new AsyncRequest(url, Constants.METHOD_DEL,jsonData,action);
+        AsyncRequest asyncRequest = new AsyncRequest(null, url, Constants.METHOD_DEL,jsonData,action);
         asyncRequest.execute();
     }
 
-    private static void sendRequest(String url, String method, String jsonData, RequestAction action) {
-
+    /**
+     * send a DELETE request to the given url with params and JWT token,
+     * perform the actions if specified
+     * @param jwt the jwt token for authorization
+     * @param url the url to send the request to
+     * @param jsonData the params of the request in JSON format
+     * @param action the action to perform before/after the request
+     */
+    public static void sendDelRequest(String jwt, String url, String jsonData, RequestAction action){
+        AsyncRequest asyncRequest = new AsyncRequest(jwt, url, Constants.METHOD_DEL,jsonData,action);
+        asyncRequest.execute();
     }
-
 }
