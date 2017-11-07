@@ -23,6 +23,8 @@
     <string name="error_invalid_email">Invalid email address, please check again.</string>
     <string name="error_password_length">Password length must be at least 8.</string>
     <string name="error_password_inconsistent">Passwords not matching!</string>
+    <string name="error_incorrect_phone_number">Incorrect phone number format!</string>
+    <string name="error_order_info_incomplete">Please specify your phone, address and payment method.</string>
 
     <!-- location service related messages -->
     <string name="address_found">Requested address found.</string>

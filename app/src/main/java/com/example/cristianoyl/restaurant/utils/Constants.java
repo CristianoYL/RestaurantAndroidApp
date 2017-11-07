@@ -18,12 +18,12 @@ public class Constants {
 
     // stripe config
     public static final String STRIPE_PUBLISHABLE_KEY = "pk_test_cvvvvcgwdJl04LlL1u7i97Pn";
-    public static final String EPHEMERAL_KEY = "ephemeral_key";
     public static final String STRIPE_API_VERSION = "2017-08-15";
 
     // key words
     public static final String KEY_DESC = "description";
     public static final String KEY_MSG = "message";
+    public static final String EPHEMERAL_KEY = "ephemeral_key";
 
     // model names
     public static final String MODEL_USER = "user";
@@ -61,9 +61,7 @@ public class Constants {
     public static final String MENU_IS_AVAILABLE = "isAvailable";
     public static final String MENU_IS_RECOMMENDED = "isRecommended";
 
-    public static final String CATEGORY_CHEF_RECOMMENDED = "特色招牌菜";
-
-
+    public static final String CATEGORY_CHEF_RECOMMENDED = "Chef's Recommendation";
 
 
     // fragment tags
@@ -74,6 +72,9 @@ public class Constants {
 
     // app configs
     public static final double TAX_RATE= 0.07;
+    public static final int LOCATION_RESULT_COUNT= 5;
+    public static final int LOCALE_PHONE_NUMBER_LENGTH= 14;
+
 
     // Location service related values
     public static final int SUCCESS_RESULT = 0;
