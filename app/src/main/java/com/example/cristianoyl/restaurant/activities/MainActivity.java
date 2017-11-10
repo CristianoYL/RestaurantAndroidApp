@@ -23,7 +23,7 @@ import com.stripe.android.view.PaymentMethodsActivity;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity
-        implements RestaurantFragment.OnRestaurantClickListener,
+        implements RestaurantFragment.OnRestaurantInteractionListener,
                     MenuFragment.OnFragmentInteractionListener,
                     OrderFragment.OnOrderFragmentInteractionListener{
 
@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity
 
 
     private void viewOrderPage(Restaurant restaurant, HashMap<Menu,Integer> orderMap){
-        OrderFragment orderFragment = OrderFragment.newInstance(restaurant, orderMap);
+        OrderFragment orderFragment = OrderFragment.newInstance(restaurant, orderMap,jwt);
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.frame_content,orderFragment, Constants.FRAGMENT_ORDER);
@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onChooseCard() {
+    public void onSelectPaymentMethod() {
         Intent payIntent = PaymentMethodsActivity.newIntent(this);
         startActivityForResult(payIntent, 1000);
     }
@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity
             FragmentManager fragmentManager = getSupportFragmentManager();
             OrderFragment orderFragment = (OrderFragment) fragmentManager.findFragmentByTag(Constants.FRAGMENT_ORDER);
             if ( orderFragment != null ) {
-                orderFragment.updateSelectedPaymentMethod(source);
+                orderFragment.notifySelectedPaymentMethod(source);
             }
         }
     }

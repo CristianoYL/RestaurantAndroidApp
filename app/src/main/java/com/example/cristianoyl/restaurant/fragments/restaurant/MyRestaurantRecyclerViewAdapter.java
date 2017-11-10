@@ -15,9 +15,9 @@ import java.util.List;
 public class MyRestaurantRecyclerViewAdapter extends RecyclerView.Adapter<MyRestaurantRecyclerViewAdapter.ViewHolder> {
 
     private final List<Restaurant> mValues;
-    private final RestaurantFragment.OnRestaurantClickListener mListener;
+    private final RestaurantFragment.OnRestaurantInteractionListener mListener;
 
-    public MyRestaurantRecyclerViewAdapter(List<Restaurant> items, RestaurantFragment.OnRestaurantClickListener listener) {
+    public MyRestaurantRecyclerViewAdapter(List<Restaurant> items, RestaurantFragment.OnRestaurantInteractionListener listener) {
         mValues = items;
         mListener = listener;
     }

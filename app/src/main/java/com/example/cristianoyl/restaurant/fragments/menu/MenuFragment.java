@@ -40,6 +40,7 @@ public class MenuFragment extends Fragment {
 
     private OnFragmentInteractionListener mListener;
 
+    private Button btnOrder;
 
 
     public MenuFragment() {
@@ -75,10 +76,10 @@ public class MenuFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_menu, container, false);
         Button btnBack = (Button) view.findViewById(R.id.btn_back);
-        TextView tvName = (TextView) view.findViewById(R.id.tv_name);
-        final Button btnOrder = (Button) view.findViewById(R.id.btn_order);
+        TextView tvRestaurantName = (TextView) view.findViewById(R.id.tv_name);
+        btnOrder = (Button) view.findViewById(R.id.btn_order);
         lv_menu = (ListView) view.findViewById(R.id.lv_menu);
-        tvName.setText(restaurant.name);
+        tvRestaurantName.setText(restaurant.name);
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -154,21 +155,11 @@ public class MenuFragment extends Fragment {
                 if ( responseCode == 200 ) {
                     try {
                         JSONObject jsonObject = new JSONObject(response);
-                        JSONArray jsonArray = jsonObject.getJSONArray(Constants.MODEL_MENU);
+                        JSONArray jsonArray = jsonObject.getJSONArray(Constants.LIST_MENU);
                         menus = new Menu[jsonArray.length()];
                         for ( int i = 0; i < jsonArray.length(); i++ ) {
                             JSONObject jsonMenu = jsonArray.getJSONObject(i);
-                            int id = jsonMenu.getInt(Constants.MENU_ID);
-                            int rid = jsonMenu.getInt(Constants.MENU_RID);
-                            String name = jsonMenu.getString(Constants.MENU_NAME);
-                            float price = (float) jsonMenu.getDouble(Constants.MENU_PRICE);
-                            String category = jsonMenu.getString(Constants.MENU_CATEGORY);
-                            String description = jsonMenu.getString(Constants.MENU_DESCRIPTION);
-                            int spicy = jsonMenu.getInt(Constants.MENU_SPICY);
-                            boolean isAvailable = jsonMenu.getBoolean(Constants.MENU_IS_AVAILABLE);
-                            boolean isRecommended = jsonMenu.getBoolean(Constants.MENU_IS_RECOMMENDED);
-                            Menu menu = new Menu(id,rid,name,category,description,price,spicy,isAvailable,isRecommended);
-                            menus[i] = menu;
+                            menus[i] = Menu.buildFromJson(jsonMenu);
                         }
                         menuAdapter = new MenuAdapter(getContext(),menus,onOrderChangeListener);
                         lv_menu.setAdapter(menuAdapter);

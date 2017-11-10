@@ -103,7 +103,7 @@ public class AsyncRequest extends AsyncTask<Void, Void, String> {
             }
             inputStream.close();
             response = stringBuilder.toString();
-            Log.d(TAG, "response:"+ response + ";");
+            Log.i(TAG, "response:"+ response + ";");
         } catch (SocketTimeoutException e) {
             response = Constants.MSG_TIME_OUT;
         } catch (IOException e) {

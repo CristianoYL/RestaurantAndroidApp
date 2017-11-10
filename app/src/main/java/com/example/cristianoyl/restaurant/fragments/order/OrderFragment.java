@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
-import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -41,7 +40,11 @@ import android.widget.Toast;
 
 import com.example.cristianoyl.restaurant.R;
 import com.example.cristianoyl.restaurant.models.Menu;
+import com.example.cristianoyl.restaurant.models.Order;
 import com.example.cristianoyl.restaurant.models.Restaurant;
+import com.example.cristianoyl.restaurant.request.EndPoints;
+import com.example.cristianoyl.restaurant.request.RequestAction;
+import com.example.cristianoyl.restaurant.request.RequestHelper;
 import com.example.cristianoyl.restaurant.services.FetchAddressIntentService;
 import com.example.cristianoyl.restaurant.utils.Constants;
 import com.google.android.gms.common.ConnectionResult;
@@ -55,13 +58,15 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
 import com.google.android.gms.maps.SupportMapFragment;
 import com.stripe.android.model.Source;
 import com.stripe.android.model.SourceCardData;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -85,7 +90,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private static final String TAG = "OrderFragment";
 
     private static final String ARG_RESTAURANT = "restaurant";
-    private static final String ARG_ORDER_MAP = "orderMap";
+    private static final String ARG_ORDER_MAP = "order_map";
+    private static final String ARG_JWT = "jwt";
 
     private Restaurant restaurant;
     private HashMap<Menu,Integer> orderMap;
@@ -119,6 +125,10 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     // location retrieved by the Fused Location Provider.
     private Location mCurrentLocation;
 
+    private Order order;
+
+    private String jwt; // the JWT token representing the user's identity
+
     // Keys for storing activity state.
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
@@ -137,11 +147,12 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
      * @param orderMap a map of menu and its order sum.
      * @return A new instance of fragment OrderFragment.
      */
-    public static OrderFragment newInstance(Restaurant restaurant, HashMap<Menu,Integer> orderMap) {
+    public static OrderFragment newInstance(Restaurant restaurant, HashMap<Menu,Integer> orderMap, String jwt) {
         OrderFragment fragment = new OrderFragment();
         Bundle args = new Bundle();
         args.putString(ARG_RESTAURANT,restaurant.toJson());
         args.putSerializable(ARG_ORDER_MAP, orderMap);
+        args.putString(ARG_JWT,jwt);
         fragment.setArguments(args);
         return fragment;
     }
@@ -153,14 +164,15 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         if (getArguments() != null) {
             restaurant = new Gson().fromJson(getArguments().getString(ARG_RESTAURANT),Restaurant.class);
             orderMap = (HashMap<Menu,Integer>) getArguments().getSerializable(ARG_ORDER_MAP);
+            jwt = getArguments().getString(ARG_JWT);
         }
         // Retrieve location and camera position from saved instance state.
         if (savedInstanceState != null) {
             mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
-            isPhoneSet = savedInstanceState.getBoolean(IS_PHONE_SET);
-            isPaymentMethodSet = savedInstanceState.getBoolean(IS_PAYMENT_METHOD_SET);
-            isAddressSet = savedInstanceState.getBoolean(IS_ADDRESS_SET);
+//            isPhoneSet = savedInstanceState.getBoolean(IS_PHONE_SET);
+//            isPaymentMethodSet = savedInstanceState.getBoolean(IS_PAYMENT_METHOD_SET);
+//            isAddressSet = savedInstanceState.getBoolean(IS_ADDRESS_SET);
         }
     }
 
@@ -169,9 +181,9 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         if (mMap != null) {
             outState.putParcelable(KEY_CAMERA_POSITION, mMap.getCameraPosition());
             outState.putParcelable(KEY_LOCATION, mCurrentLocation);
-            outState.putBoolean(IS_PHONE_SET,isPhoneSet);
-            outState.putBoolean(IS_PAYMENT_METHOD_SET,isPaymentMethodSet);
-            outState.putBoolean(IS_ADDRESS_SET,isAddressSet);
+//            outState.putBoolean(IS_PHONE_SET,isPhoneSet);
+//            outState.putBoolean(IS_PAYMENT_METHOD_SET,isPaymentMethodSet);
+//            outState.putBoolean(IS_ADDRESS_SET,isAddressSet);
         }
         super.onSaveInstanceState(outState);
     }
@@ -198,9 +210,11 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
-        LinearLayout layout_orders = (LinearLayout) view.findViewById(R.id.layout_orders);
-        int i = 1;  // below the "order summary" TextView
+        // dynamically add views into the layout to show the order items
+        LinearLayout layout_orders = view.findViewById(R.id.layout_orders);
+        int i = 1;  // index, below the "order summary" TextView
         float total = 0;
+        order = new Order();
         for ( Menu menu : orderMap.keySet() ) {
             if ( orderMap.get(menu) > 0 ) {
                 View v = inflater.inflate(R.layout.layout_order_item, container, false);
@@ -212,6 +226,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 float itemSum = menu.price * orderMap.get(menu);
                 total += itemSum;
                 tv_sum.setText("$" + itemSum);
+                order.addOrderItem(menu.id,menu.price,orderMap.get(menu));
                 layout_orders.addView(v, i++, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             }
         }
@@ -298,7 +313,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         });
         // subtotal
         TextView tvSubtotal = (TextView) view.findViewById(R.id.tv_subtotal);
-        tvSubtotal.setText("$" + total);
+        float subtotal = total;
+        tvSubtotal.setText("$" + subtotal);
         // tax
         TextView tvTax = (TextView) view.findViewById(R.id.tv_tax);
         double tax = total * Constants.TAX_RATE;
@@ -319,8 +335,15 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         TextView tvTotal = (TextView) view.findViewById(R.id.tv_total);
         tvTotal.setText("$" + String.format(Locale.getDefault(),"%.2f", total));
 
+        order.setSubtotal(subtotal);
+        order.setDeliveryFee(delivery);
+        order.setTips(tips);
+        order.setTax((float) tax);
+        order.setTotal(total);
+
         // delivery address
         // manual input
+
         tvAddress = view.findViewById(R.id.tv_address);
 
         // show a popup dialog window when clicking the tvAddress
@@ -369,6 +392,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         tvAddress.setText(etAddress.getText().toString());
+                        order.setDeliveryAddress(etAddress.getText().toString());
                         mMap.clear();
                         try {
                             List<Address> addressList = new Geocoder(getContext(),Locale.getDefault())
@@ -432,6 +456,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                             isPhoneSet = false;
                         } else {
                             isPhoneSet = true;
+                            order.setPhone(tvPhone.getText().toString());
                         }
 
                     }
@@ -440,12 +465,6 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         // do nothing, simply dismiss the dialog
-                        if ( tvPhone.getText().length() < Constants.LOCALE_PHONE_NUMBER_LENGTH ) {
-                            Toast.makeText(getContext(), R.string.error_incorrect_phone_number, Toast.LENGTH_SHORT).show();
-                            isPhoneSet = false;
-                        } else {
-                            isPhoneSet = true;
-                        }
                     }
                 });
                 builder.setCancelable(false);
@@ -458,7 +477,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             @Override
             public void onClick(View v) {
                 if (mListener != null) {
-                    mListener.onChooseCard();
+                    mListener.onSelectPaymentMethod();
                 }
             }
         });
@@ -467,6 +486,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         btnPlaceOrder.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                placeOrder();
                 if ( isPhoneSet && isAddressSet && isPaymentMethodSet ) {
                     Toast.makeText(getContext(), "Place order!", Toast.LENGTH_SHORT).show();
                 } else {
@@ -881,13 +901,17 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 String errorMessage = resultData.getString(Constants.RESULT_DATA_KEY);
                 Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
             }
-
-            // Reset. Enable the Fetch Address button and stop showing the progress bar.
         }
 
     }
 
-    public void updateSelectedPaymentMethod(Source source){
+    /**
+     *  the context activity will call this method once user selects a payment method, and inform
+     *  this fragment of the user's selection and allow OrderFragment to update its UI and internal
+     *  logic.
+     * @param source the payment source the user selects
+     */
+    public void notifySelectedPaymentMethod(Source source){
         if ( source != null ) {
             if ( Source.CARD.equals(source.getType())) { // user selected a card as payment source
                 SourceCardData cardData = (SourceCardData) source.getSourceTypeModel();
@@ -895,6 +919,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                         + cardData.getBrand() + " ending in " + cardData.getLast4();
                 tvPaymentMethod.setText(selectedCardInfo);
                 isPaymentMethodSet = true;
+                order.setSource(source);
             } else {
                 // TODO: implement other payment methods first
                 Log.d(TAG,"Source type = " + source.getType());
@@ -907,11 +932,38 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         }
     }
 
+    private void placeOrder(){
+        RequestAction actionPostOrder = new RequestAction() {
+            @Override
+            public void actOnPre() {
+                Log.d(TAG,"Placing order...");
+                Log.i(TAG,order.toJson());
+            }
+
+            @Override
+            public void actOnPost(int responseCode, String response) {
+                if ( responseCode == 201 ) {
+                    try {
+                        JSONObject jsonResponse = new JSONObject(response);
+                        Log.d(TAG,response);
+                        //TODO: handle successful order
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    //TODO: handle unsuccessful order
+                }
+            }
+        };
+        String url = EndPoints.urlOrder();
+        RequestHelper.sendPostRequest(jwt,url,order.toJson(),actionPostOrder);
+    }
+
     /**
      *  The context must implement this interface to perform UI interaction on this fragment
      */
     public interface OnOrderFragmentInteractionListener {
-        void onChooseCard();    // goto the payment method selection page
+        void onSelectPaymentMethod();    // goto the payment method selection page
         void onBackButtonPressed();
     }
 }

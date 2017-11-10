@@ -32,6 +32,7 @@ public class Constants {
 
     // model list names
     public static final String LIST_RESTAURANT = "restaurants";
+    public static final String LIST_MENU = "menus";
 
     // model fields
     // user model
