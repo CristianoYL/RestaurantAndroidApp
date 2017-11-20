@@ -117,6 +117,8 @@ public class MenuAdapter extends BaseAdapter {
             tvName.setText(menu.name);
             tvPrice.setText("$" + menu.price);
             tv_description.setText(menu.description);
+            // TODO set image here
+            ivPhoto.setImageResource(R.drawable.food);
             tvAmount.setText(String.valueOf(orderMap.get(menu)));
             layoutGeneral.setOnClickListener(new View.OnClickListener() {
                 @Override

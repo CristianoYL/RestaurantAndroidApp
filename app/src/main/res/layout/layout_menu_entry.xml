@@ -126,6 +126,7 @@
             android:id="@+id/iv_food_image"
             android:layout_width="300dp"
             android:layout_height="200dp"
+            android:contentDescription="@string/cd_menu_image"
             app:srcCompat="@drawable/ic_image_24dp" />
 
         <TextView

@@ -857,7 +857,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         Intent intent = new Intent(getActivity(), FetchAddressIntentService.class);
 
         // Pass the result receiver as an extra to the service.
-        intent.putExtra(Constants.RECEIVER, mResultReceiver);
+        intent.putExtra(Constants.LOCATION_RECEIVER, mResultReceiver);
 
         // Pass the location data as an extra to the service.
         intent.putExtra(Constants.ADDRESS_DATA_EXTRA,queryAddress);

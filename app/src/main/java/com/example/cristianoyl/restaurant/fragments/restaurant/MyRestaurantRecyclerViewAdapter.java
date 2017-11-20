@@ -25,7 +25,7 @@ public class MyRestaurantRecyclerViewAdapter extends RecyclerView.Adapter<MyRest
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.listitem_restaurant, parent, false);
+                .inflate(R.layout.layout_restaurant, parent, false);
         return new ViewHolder(view);
     }
 
@@ -38,6 +38,7 @@ public class MyRestaurantRecyclerViewAdapter extends RecyclerView.Adapter<MyRest
         String info = "$" + restaurant.fee +" Delivery  $" + restaurant.limit + " Minimum";
         holder.tvInfo.setText(info);
         //TODO: set the logo
+        holder.ivLogo.setImageResource(R.drawable.restaurant);
 //        holder.ivLogo.setImageBitmap();
 
         holder.mView.setOnClickListener(new View.OnClickListener() {

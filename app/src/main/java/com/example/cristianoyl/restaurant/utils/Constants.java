@@ -80,9 +80,15 @@ public class Constants {
     // Location service related values
     public static final int SUCCESS_RESULT = 0;
     public static final int FAILURE_RESULT = 1;
-    public static final String RECEIVER = "RECEIVER";
+    public static final String LOCATION_RECEIVER = "LOCATION_RECEIVER";
     public static final String RESULT_DATA_KEY = "RESULT_DATA_KEY";
     public static final String LOCATION_DATA_EXTRA = "LOCATION_DATA_EXTRA";
     public static final String ADDRESS_DATA_EXTRA = "ADDRESS_DATA_EXTRA";
     public static final float DEFAULT_ZOOM = 16;
+
+    // Image service related values
+    public static final String IMAGE_RECEIVER = "IMAGE_RECEIVER";
+    public static final String IMAGE_URL_EXTRA = "IMAGE_URL_EXTRA";
+    public static final String IMAGE_BITMAP_EXTRA = "IMAGE_BITMAP_EXTRA";
+
 }

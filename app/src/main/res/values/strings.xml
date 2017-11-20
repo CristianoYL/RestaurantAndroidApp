@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Hunan Manor</string>
+    <string name="app_name">Instaurant</string>
 
     <!-- hints-->
     <string name="hint_email">Email</string>
@@ -35,6 +35,7 @@
 
     <!-- content descriptions -->
     <string name="cd_restaurant_logo">Restaurant Logo</string>
+    <string name="cd_menu_image">Menu image</string>
 
     <!-- label text-->
     <string name="label_order_summary">Order Summary</string>
