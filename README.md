@@ -44,6 +44,8 @@ When clicking on "PAYMENT METHOD" button, you'll be prompt with a new window ask
 
 <img src="https://github.com/CristianoYL/RestaurantAndroidApp/blob/master/screenshot/Screenshot_20171120-183507.png" width="200"> <img src="https://github.com/CristianoYL/RestaurantAndroidApp/blob/master/screenshot/Screenshot_20171120-175735.png" width="200">
 
+If you have concerns on the security of your card info, [here's how our service make sure it is safe](https://github.com/CristianoYL/RestaurantAppAPI#security-of-payment)
+
 After filling all necessary information on your order, you can place your order now!
 
 <img src="https://github.com/CristianoYL/RestaurantAndroidApp/blob/master/screenshot/Screenshot_20171120-175818.png" width="200">
