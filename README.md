@@ -5,7 +5,7 @@ This is an Android online restaurant ordering app. User may register and login i
 The project is developed using **Android Studio 3.0**. It is recommended that you use **Android Studio** instead of other IDEs for simpler project import. [You may download Android Studio from the official website here](https://developer.android.com/studio/index.html).
 
 ## Dependencies
-This service relies on serveral other services as well. For example, it uses [Google Maps API](https://developers.google.com/maps/documentation/android-api/) for location services and maps, [Gson](https://sites.google.com/site/gson/gson-user-guide) for data serialization, more specificly, for jsonifying data, and [Stripe](https://stripe.com/docs) for live credit card charges etc.
+This service relies on several other services as well. For example, it uses [Google Maps API](https://developers.google.com/maps/documentation/android-api/) for location services and maps, [Gson](https://sites.google.com/site/gson/gson-user-guide) for data serialization, more specifically, for jsonifying data, and [Stripe](https://stripe.com/docs) for live credit card charges etc.
 
 Since **Android Studio** uses **gradle build**, you don't need to worry about dependencies when importing the code.
 # SDK
@@ -49,4 +49,3 @@ If you have concerns on the security of your card info, [here's how our service 
 After filling all necessary information on your order, you can place your order now!
 
 <img src="https://github.com/CristianoYL/RestaurantAndroidApp/blob/master/screenshot/Screenshot_20171120-175818.png" width="200">
-
