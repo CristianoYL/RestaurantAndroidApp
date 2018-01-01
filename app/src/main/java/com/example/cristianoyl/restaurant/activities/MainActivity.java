@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onCardSelected(DummyContent.DummyItem item) {
-        
+
     }
 
     @Override
