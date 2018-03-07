@@ -1,5 +1,6 @@
 package com.example.cristianoyl.restaurant.fragments.order;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -7,18 +8,20 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
+import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.telephony.PhoneNumberFormattingTextWatcher;
 import android.telephony.PhoneNumberUtils;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -28,8 +31,8 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -37,11 +40,17 @@ import android.widget.Toast;
 
 import com.example.cristianoyl.restaurant.R;
 import com.example.cristianoyl.restaurant.models.Menu;
+import com.example.cristianoyl.restaurant.models.Order;
 import com.example.cristianoyl.restaurant.models.Restaurant;
+import com.example.cristianoyl.restaurant.request.EndPoints;
+import com.example.cristianoyl.restaurant.request.RequestAction;
+import com.example.cristianoyl.restaurant.request.RequestHelper;
 import com.example.cristianoyl.restaurant.services.FetchAddressIntentService;
 import com.example.cristianoyl.restaurant.utils.Constants;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -49,11 +58,15 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
 import com.google.android.gms.maps.SupportMapFragment;
+import com.stripe.android.model.Source;
+import com.stripe.android.model.SourceCardData;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -77,13 +90,17 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private static final String TAG = "OrderFragment";
 
     private static final String ARG_RESTAURANT = "restaurant";
-    private static final String ARG_ORDER_MAP = "orderMap";
+    private static final String ARG_ORDER_MAP = "order_map";
+    private static final String ARG_JWT = "jwt";
 
     private Restaurant restaurant;
     private HashMap<Menu,Integer> orderMap;
-    private TextView tvAddress, tvPhone;
+    private TextView tvMessage, tvCoupon, tvAddress, tvPhone, tvPaymentMethod;
     private ListView lvAddress;
     private List<String> strAddressList;
+    private Button btnPlaceOrder;
+
+    private boolean isPaymentMethodSet, isPhoneSet, isAddressSet;
 
     private OnOrderFragmentInteractionListener mListener;
     private AddressResultReceiver mResultReceiver;
@@ -91,6 +108,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private GoogleMap mMap;
     private SupportMapFragment mMapFragment;
     private CameraPosition mCameraPosition;
+    private LocationRequest locationRequest;
+    private LocationListener locationListener;
 
     // The entry point to Google Play services, used by the Places API and Fused Location Provider.
     private GoogleApiClient mGoogleApiClient;
@@ -100,14 +119,22 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     private final LatLng mDefaultLocation = new LatLng(40.5233403,-74.4588031);
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private boolean mLocationPermissionGranted;
+    private static final int LOCATION_EXPIRATION_TIME = 1000 * 60;  // 1 minute
 
     // The geographical location where the device is currently located. That is, the last-known
     // location retrieved by the Fused Location Provider.
-    private Location mLastKnownLocation;
+    private Location mCurrentLocation;
+
+    private Order order;
+
+    private String jwt; // the JWT token representing the user's identity
 
     // Keys for storing activity state.
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
+    private static final String IS_PHONE_SET = "is_phone_set";
+    private static final String IS_ADDRESS_SET = "is_address_set";
+    private static final String IS_PAYMENT_METHOD_SET = "is_payment_method_set";
 
     public OrderFragment() {
         // Required empty public constructor
@@ -120,11 +147,12 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
      * @param orderMap a map of menu and its order sum.
      * @return A new instance of fragment OrderFragment.
      */
-    public static OrderFragment newInstance(Restaurant restaurant, HashMap<Menu,Integer> orderMap) {
+    public static OrderFragment newInstance(Restaurant restaurant, HashMap<Menu,Integer> orderMap, String jwt) {
         OrderFragment fragment = new OrderFragment();
         Bundle args = new Bundle();
         args.putString(ARG_RESTAURANT,restaurant.toJson());
         args.putSerializable(ARG_ORDER_MAP, orderMap);
+        args.putString(ARG_JWT,jwt);
         fragment.setArguments(args);
         return fragment;
     }
@@ -132,14 +160,19 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG,"Test");
         if (getArguments() != null) {
             restaurant = new Gson().fromJson(getArguments().getString(ARG_RESTAURANT),Restaurant.class);
             orderMap = (HashMap<Menu,Integer>) getArguments().getSerializable(ARG_ORDER_MAP);
+            jwt = getArguments().getString(ARG_JWT);
         }
         // Retrieve location and camera position from saved instance state.
         if (savedInstanceState != null) {
-            mLastKnownLocation = savedInstanceState.getParcelable(KEY_LOCATION);
+            mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
+//            isPhoneSet = savedInstanceState.getBoolean(IS_PHONE_SET);
+//            isPaymentMethodSet = savedInstanceState.getBoolean(IS_PAYMENT_METHOD_SET);
+//            isAddressSet = savedInstanceState.getBoolean(IS_ADDRESS_SET);
         }
     }
 
@@ -147,9 +180,17 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     public void onSaveInstanceState(Bundle outState) {
         if (mMap != null) {
             outState.putParcelable(KEY_CAMERA_POSITION, mMap.getCameraPosition());
-            outState.putParcelable(KEY_LOCATION, mLastKnownLocation);
+            outState.putParcelable(KEY_LOCATION, mCurrentLocation);
+//            outState.putBoolean(IS_PHONE_SET,isPhoneSet);
+//            outState.putBoolean(IS_PAYMENT_METHOD_SET,isPaymentMethodSet);
+//            outState.putBoolean(IS_ADDRESS_SET,isAddressSet);
         }
         super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
     }
 
     @Override
@@ -158,12 +199,22 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_order, container, false);
 
-        TextView tvRestaurantName = (TextView) view.findViewById(R.id.tv_name);
+        TextView tvRestaurantName = view.findViewById(R.id.tv_name);
         tvRestaurantName.setText(restaurant.name);
 
-        LinearLayout layout_orders = (LinearLayout) view.findViewById(R.id.layout_orders);
-        int i = 1;  // below the "order summary" TextView
+        Button btnBack = view.findViewById(R.id.btn_back);
+        btnBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.onBackButtonPressed();
+            }
+        });
+
+        // dynamically add views into the layout to show the order items
+        LinearLayout layout_orders = view.findViewById(R.id.layout_orders);
+        int i = 1;  // index, below the "order summary" TextView
         float total = 0;
+        order = new Order();
         for ( Menu menu : orderMap.keySet() ) {
             if ( orderMap.get(menu) > 0 ) {
                 View v = inflater.inflate(R.layout.layout_order_item, container, false);
@@ -175,28 +226,95 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 float itemSum = menu.price * orderMap.get(menu);
                 total += itemSum;
                 tv_sum.setText("$" + itemSum);
+                order.addOrderItem(menu.id,menu.price,orderMap.get(menu));
                 layout_orders.addView(v, i++, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             }
         }
 
-        TextView tvMessage = (TextView) view.findViewById(R.id.tv_message);
+        tvMessage = view.findViewById(R.id.tv_message);
         tvMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(getContext(), "add a message", Toast.LENGTH_SHORT).show();
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                // inflate dialog view and find sub views
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_basic,null);
+                TextInputLayout textInputLayout = view.findViewById(R.id.text_input_layout);
+                final EditText etMessage = view.findViewById(R.id.edit_text);
+                // copy the previously input data
+                final String cachedInput = tvMessage.getText().toString();
+                if ( !cachedInput.equals(getString(R.string.label_add_message)) ) {
+                    etMessage.setText(cachedInput);
+                }
+                // set hint and input types
+                textInputLayout.setHint(getString(R.string.label_add_message));
+                etMessage.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                        | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES | InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
+                        | InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE);
+                // everything ready, render dialog
+                builder.setView(view);
+                builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if ( etMessage.getText().toString().length() == 0 ) {
+                            tvMessage.setText(getString(R.string.label_add_message));
+                        } else {
+                            tvMessage.setText(etMessage.getText().toString());
+                        }
+                    }
+                });
+                builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing, simply dismiss the dialog
+                    }
+                });
+                builder.show();
             }
         });
 
-        TextView tvCoupon = (TextView) view.findViewById(R.id.tv_coupon);
+        tvCoupon = view.findViewById(R.id.tv_coupon);
         tvCoupon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(getContext(), "use a coupon", Toast.LENGTH_SHORT).show();
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                // inflate dialog view and find sub views
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_basic,null);
+                TextInputLayout textInputLayout = view.findViewById(R.id.text_input_layout);
+                final EditText etCoupon = view.findViewById(R.id.edit_text);
+                // copy the previously input data
+                final String cachedInput = tvCoupon.getText().toString();
+                if ( !cachedInput.equals(getString(R.string.label_use_coupon)) ) {
+                    etCoupon.setText(cachedInput);
+                }
+                // set hint and input types
+                textInputLayout.setHint(getString(R.string.label_use_coupon));
+                etCoupon.setInputType(InputType.TYPE_CLASS_TEXT);
+                // everything ready, render dialog
+                builder.setView(view);
+                builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if ( etCoupon.getText().toString().length() == 0 ) {
+                            tvCoupon.setText(getString(R.string.label_use_coupon));
+                        } else {
+                            tvCoupon.setText(etCoupon.getText().toString());
+                        }
+
+                    }
+                });
+                builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing, simply dismiss the dialog
+                    }
+                });
+                builder.show();
             }
         });
         // subtotal
         TextView tvSubtotal = (TextView) view.findViewById(R.id.tv_subtotal);
-        tvSubtotal.setText("$" + total);
+        float subtotal = total;
+        tvSubtotal.setText("$" + subtotal);
         // tax
         TextView tvTax = (TextView) view.findViewById(R.id.tv_tax);
         double tax = total * Constants.TAX_RATE;
@@ -217,9 +335,16 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         TextView tvTotal = (TextView) view.findViewById(R.id.tv_total);
         tvTotal.setText("$" + String.format(Locale.getDefault(),"%.2f", total));
 
+        order.setSubtotal(subtotal);
+        order.setDeliveryFee(delivery);
+        order.setTips(tips);
+        order.setTax((float) tax);
+        order.setTotal(total);
+
         // delivery address
         // manual input
-        tvAddress = (TextView) view.findViewById(R.id.tv_address);
+
+        tvAddress = view.findViewById(R.id.tv_address);
 
         // show a popup dialog window when clicking the tvAddress
         tvAddress.setOnClickListener(new View.OnClickListener() {
@@ -227,8 +352,8 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                 View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_address,null);
-                final EditText etAddress = (EditText) view.findViewById(R.id.et_address);
-                lvAddress = (ListView) view.findViewById(lv_address);
+                final EditText etAddress = view.findViewById(R.id.et_address);
+                lvAddress = view.findViewById(lv_address);
                 etAddress.setText(tvAddress.getText().toString());
                 // if there is location info available, show all the (5) possible suggestions in the ListView
                 if ( strAddressList != null ) {
@@ -267,16 +392,19 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         tvAddress.setText(etAddress.getText().toString());
+                        order.setDeliveryAddress(etAddress.getText().toString());
                         mMap.clear();
                         try {
                             List<Address> addressList = new Geocoder(getContext(),Locale.getDefault())
                                     .getFromLocationName(tvAddress.getText().toString(),1);
                             if ( addressList != null && addressList.size() == 1 ) {
+                                stopLocating();
                                 LatLng latLng = new LatLng(
                                         addressList.get(0).getLatitude(),
                                         addressList.get(0).getLongitude());
                                 mCameraPosition = CameraPosition.fromLatLngZoom(latLng,Constants.DEFAULT_ZOOM);
                                 mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
+                                mMap.clear();
                                 mMap.addMarker(new MarkerOptions().position(latLng).title(tvAddress.getText().toString()));
                             }
                         } catch (IOException e) {
@@ -294,16 +422,26 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
             }
         });
 
-        tvPhone = (TextView) view.findViewById(R.id.tv_phone);
+        tvPhone = view.findViewById(R.id.tv_phone);
         tvPhone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_phone,null);
-                final EditText etPhone = (EditText) view.findViewById(R.id.et_phone);
-                if ( !tvPhone.getText().toString().equals(getString(R.string.label_contact_phone)) ) {
-                    etPhone.setText(tvPhone.getText().toString());
+                // inflate dialog view and find sub views
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_basic,null);
+                TextInputLayout textInputLayout = view.findViewById(R.id.text_input_layout);
+                final EditText etPhone = view.findViewById(R.id.edit_text);
+                // copy the previously input data
+                final String cachedInput = tvPhone.getText().toString();
+                if ( !cachedInput.equals(getString(R.string.label_contact_phone)) ) {
+                    etPhone.setText(cachedInput);
                 }
+                // set hint and input types
+                textInputLayout.setHint(getString(R.string.label_contact_phone));
+                etPhone.setInputType(InputType.TYPE_CLASS_PHONE);
+                PhoneNumberFormattingTextWatcher textWatcher = new PhoneNumberFormattingTextWatcher();
+                etPhone.addTextChangedListener(textWatcher);
+                // everything ready, render dialog
                 builder.setView(view);
                 builder.setPositiveButton(R.string.btn_confirm, new DialogInterface.OnClickListener() {
                     @Override
@@ -313,6 +451,14 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                         } else {
                             tvPhone.setText(PhoneNumberUtils.formatNumber(etPhone.getText().toString()));
                         }
+                        if ( tvPhone.getText().length() < Constants.LOCALE_PHONE_NUMBER_LENGTH ) {
+                            Toast.makeText(getContext(), R.string.error_incorrect_phone_number, Toast.LENGTH_SHORT).show();
+                            isPhoneSet = false;
+                        } else {
+                            isPhoneSet = true;
+                            order.setPhone(tvPhone.getText().toString());
+                        }
+
                     }
                 });
                 builder.setNegativeButton(R.string.btn_cancel, new DialogInterface.OnClickListener() {
@@ -321,16 +467,30 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                         // do nothing, simply dismiss the dialog
                     }
                 });
+                builder.setCancelable(false);
                 builder.show();
             }
         });
 
-        TextView tvCard = view.findViewById(R.id.tv_card);
-        tvCard.setOnClickListener(new View.OnClickListener() {
+        tvPaymentMethod = view.findViewById(R.id.tv_card);
+        tvPaymentMethod.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mListener != null) {
-                    mListener.onChooseCard();
+                    mListener.onSelectPaymentMethod();
+                }
+            }
+        });
+
+        btnPlaceOrder = view.findViewById(R.id.btn_place_order);
+        btnPlaceOrder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                placeOrder();
+                if ( isPhoneSet && isAddressSet && isPaymentMethodSet ) {
+                    Toast.makeText(getContext(), "Place order!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(), R.string.error_order_info_incomplete, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -380,34 +540,34 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Use a custom info window adapter to handle multiple lines of text in the
-        // info window contents.
-        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
-
-            @Override
-            // Return null here, so that getInfoContents() is called next.
-            public View getInfoWindow(Marker arg0) {
-                return null;
-            }
-
-            @Override
-            public View getInfoContents(Marker marker) {
-                // Inflate the layouts for the info window, title and snippet.
-                View infoWindow = getActivity().getLayoutInflater().inflate(R.layout.custom_info_contents,
-                        (FrameLayout) getActivity().findViewById(R.id.frame_map), false);
-
-                TextView title = ((TextView) infoWindow.findViewById(R.id.title));
-                title.setText(marker.getTitle());
-
-                TextView snippet = ((TextView) infoWindow.findViewById(R.id.snippet));
-                snippet.setText(marker.getSnippet());
-
-                return infoWindow;
-            }
-        });
+//        // Use a custom info window adapter to handle multiple lines of text in the
+//        // info window contents.
+//        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+//
+//            @Override
+//            // Return null here, so that getInfoContents() is called next.
+//            public View getInfoWindow(Marker arg0) {
+//                return null;
+//            }
+//
+//            @Override
+//            public View getInfoContents(Marker marker) {
+//                // Inflate the layouts for the info window, title and snippet.
+//                View infoWindow = getActivity().getLayoutInflater().inflate(R.layout.custom_info_contents,
+//                        (FrameLayout) getActivity().findViewById(R.id.frame_map), false);
+//
+//                TextView title = (infoWindow.findViewById(R.id.title));
+//                title.setText(marker.getTitle());
+//
+//                TextView snippet = (infoWindow.findViewById(R.id.snippet));
+//                snippet.setText(marker.getSnippet());
+//
+//                return infoWindow;
+//            }
+//        });
 
         // Turn on the My Location layer and the related control on the map.
-        updateLocationUI();
+        updateMapUI();
 
         // Get the current location of the device and set the position of the map.
         getDeviceLocation();
@@ -436,35 +596,81 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
          * cases when a location is not available.
          */
         if (mLocationPermissionGranted) {
-            mLastKnownLocation = LocationServices.FusedLocationApi
+            mCurrentLocation = LocationServices.FusedLocationApi
                     .getLastLocation(mGoogleApiClient);
         }
 
         // Set the map's camera position to the current location of the device.
         if (mCameraPosition != null) {
+            isAddressSet = true;
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
-        } else if (mLastKnownLocation != null) {
+        } else if (mCurrentLocation != null) {
+            isAddressSet = true;
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                    new LatLng(mLastKnownLocation.getLatitude(),
-                            mLastKnownLocation.getLongitude()), Constants.DEFAULT_ZOOM));
-            strAddressList = getCompleteAddressString(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),5);
-            if ( strAddressList.size() > 0 ) {
-                tvAddress.setText(strAddressList.get(0));
-            } else {
-                Toast.makeText(getContext(), "Location info unavailable, please try again.", Toast.LENGTH_SHORT).show();
-            }
-
+                    new LatLng(mCurrentLocation.getLatitude(),
+                            mCurrentLocation.getLongitude()), Constants.DEFAULT_ZOOM));
         } else {
+            isAddressSet = false;
             Log.d(TAG, "Current location is null. Using defaults.");
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, Constants.DEFAULT_ZOOM));
+            mMap.setMyLocationEnabled(false);
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
+        if ( mMap.isMyLocationEnabled() ) {
+            startLocating();
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startLocating(){
+        if ( locationListener == null ) {
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    isAddressSet = true;
+                    if ( isBetterLocation(location,mCurrentLocation) ) {
+                        mCurrentLocation = location;
+                        LatLng newLocation = new LatLng(location.getLatitude(),location.getLongitude());
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation));
+                        strAddressList = getCompleteAddressString(mCurrentLocation.getLatitude(),
+                                mCurrentLocation.getLongitude(),Constants.LOCATION_RESULT_COUNT);
+                        if ( strAddressList.size() > 0 ) {
+                            tvAddress.setText(strAddressList.get(0));
+                            mMap.clear();
+                            mMap.addMarker(new MarkerOptions().position(newLocation).title(tvAddress.getText().toString()));
+                        } else {
+                            Toast.makeText(getContext(), "Location info unavailable, please try again.", Toast.LENGTH_SHORT).show();
+                        }
+                        Log.d(TAG,"Use new location");
+                    } else {
+                        Log.d(TAG,"Use previous best location");
+                    }
+
+                }
+            };
+        }
+        if ( locationRequest == null ) {
+            locationRequest = new LocationRequest();
+            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            locationRequest.setFastestInterval(1000);
+            locationRequest.setInterval(2000);
+            locationRequest.setNumUpdates(5);
+        }
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,locationRequest,locationListener);
+    }
+
+    @SuppressLint("MissingPermission")
+    private void stopLocating(){
+        if ( locationListener != null ) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient,locationListener);
+        }
+
     }
 
     /**
      * Updates the map's UI settings based on whether the user has granted location permission.
      */
-    private void updateLocationUI() {
+    private void updateMapUI() {
         if (mMap == null) {
             return;
         }
@@ -498,8 +704,71 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         } else {
             mMap.setMyLocationEnabled(false);
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
-            mLastKnownLocation = null;
+            mCurrentLocation = null;
         }
+    }
+
+    /** Determines whether one Location reading is better than the current Location fix
+     * @param location  The new Location that you want to evaluate
+     * @param currentBestLocation  The current Location fix, to which you want to compare the new one
+     */
+    protected boolean isBetterLocation(Location location, Location currentBestLocation) {
+        if (currentBestLocation == null) {
+            // A new location is always better than no location
+            Log.d(TAG,"first location");
+            return true;
+        }
+
+        Log.d(TAG,"Comparing new location("+location.getLatitude()+","+location.getLongitude()+")" +
+                " to currentBestLocation("+currentBestLocation.getLatitude()+","+currentBestLocation.getLongitude()+")");
+
+        // Check whether the new location fix is newer or older
+        long timeDelta = location.getTime() - currentBestLocation.getTime();
+        boolean isSignificantlyNewer = timeDelta > LOCATION_EXPIRATION_TIME;
+        boolean isSignificantlyOlder = timeDelta < -LOCATION_EXPIRATION_TIME;
+        boolean isNewer = timeDelta > 0;
+
+        // If it's been more than two minutes since the current location, use the new location
+        // because the user has likely moved
+        if (isSignificantlyNewer) {
+            Log.d(TAG,"is sig newer");
+            return true;
+            // If the new location is more than two minutes older, it must be worse
+        } else if (isSignificantlyOlder) {
+            Log.d(TAG,"is sig older");
+            return false;
+        }
+
+        // Check whether the new location fix is more or less accurate
+        int accuracyDelta = (int) (location.getAccuracy() - currentBestLocation.getAccuracy());
+        boolean isLessAccurate = accuracyDelta > 0;
+        boolean isMoreAccurate = accuracyDelta < 0;
+        boolean isSignificantlyLessAccurate = accuracyDelta > 200;
+
+        // Check if the old and new location are from the same provider
+        boolean isFromSameProvider = isSameProvider(location.getProvider(),
+                currentBestLocation.getProvider());
+
+        // Determine location quality using a combination of timeliness and accuracy
+        if (isMoreAccurate) {
+            Log.d(TAG,"more accurate");
+            return true;
+        } else if (isNewer && !isLessAccurate) {
+            Log.d(TAG,"newer but less accurate");
+            return true;
+        } else if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) {
+            Log.d(TAG,"newer sig less accurate same provider");
+            return true;
+        }
+        return false;
+    }
+
+    /** Checks whether two providers are the same */
+    private boolean isSameProvider(String provider1, String provider2) {
+        if (provider1 == null) {
+            return provider2 == null;
+        }
+        return provider1.equals(provider2);
     }
 
     /**
@@ -519,7 +788,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 }
             }
         }
-        updateLocationUI();
+        updateMapUI();
     }
 
     /**
@@ -578,37 +847,17 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
     }
 
     /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnOrderFragmentInteractionListener {
-        void onChooseCard();
-    }
-
-    /**
      *  start an IntentService to query for a Address using a String
      * @param queryAddress  the string that contains the address info
      */
     private void getAddressFromString(String queryAddress) {
         Log.d(TAG,"Searching for address:" + queryAddress);
-//        try {
-//            return new Geocoder(getContext()).getFromLocationName(
-//                    queryAddress,5);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        return new ArrayList<>();
+
         // Create an intent for passing to the intent service responsible for fetching the address.
         Intent intent = new Intent(getActivity(), FetchAddressIntentService.class);
 
         // Pass the result receiver as an extra to the service.
-        intent.putExtra(Constants.RECEIVER, mResultReceiver);
+        intent.putExtra(Constants.LOCATION_RECEIVER, mResultReceiver);
 
         // Pass the location data as an extra to the service.
         intent.putExtra(Constants.ADDRESS_DATA_EXTRA,queryAddress);
@@ -618,11 +867,11 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
         // service kills itself automatically once all intents are processed.
         getActivity().startService(intent);
     }
+
     private class AddressResultReceiver extends ResultReceiver {
         AddressResultReceiver(Handler handler) {
             super(handler);
         }
-
         /**
          *  Receives data sent from FetchAddressIntentService and updates the UI in MainActivity.
          */
@@ -635,7 +884,7 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 if ( addressList == null ) {
                     return;
                 }
-                ArrayList<String> addresses = new ArrayList<>(5);
+                ArrayList<String> addresses = new ArrayList<>(Constants.LOCATION_RESULT_COUNT);
                 for ( Address address : addressList ) {
                     ArrayList<String> addressLines = new ArrayList<>();
                     for ( int i = 0; i <= address.getMaxAddressLineIndex(); i++ ) {
@@ -652,8 +901,69 @@ public class OrderFragment extends Fragment implements OnMapReadyCallback,
                 String errorMessage = resultData.getString(Constants.RESULT_DATA_KEY);
                 Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
             }
-
-            // Reset. Enable the Fetch Address button and stop showing the progress bar.
         }
+
+    }
+
+    /**
+     *  the context activity will call this method once user selects a payment method, and inform
+     *  this fragment of the user's selection and allow OrderFragment to update its UI and internal
+     *  logic.
+     * @param source the payment source the user selects
+     */
+    public void notifySelectedPaymentMethod(Source source){
+        if ( source != null ) {
+            if ( Source.CARD.equals(source.getType())) { // user selected a card as payment source
+                SourceCardData cardData = (SourceCardData) source.getSourceTypeModel();
+                String selectedCardInfo = getString(R.string.label_payment_method) + ":\n"
+                        + cardData.getBrand() + " ending in " + cardData.getLast4();
+                tvPaymentMethod.setText(selectedCardInfo);
+                isPaymentMethodSet = true;
+                order.setSource(source);
+            } else {
+                // TODO: implement other payment methods first
+                Log.d(TAG,"Source type = " + source.getType());
+                tvPaymentMethod.setText(R.string.label_payment_method);
+                isPaymentMethodSet = false;
+            }
+        } else {
+            tvPaymentMethod.setText(R.string.label_payment_method);
+            isPaymentMethodSet = false;
+        }
+    }
+
+    private void placeOrder(){
+        RequestAction actionPostOrder = new RequestAction() {
+            @Override
+            public void actOnPre() {
+                Log.d(TAG,"Placing order...");
+                Log.i(TAG,order.toJson());
+            }
+
+            @Override
+            public void actOnPost(int responseCode, String response) {
+                if ( responseCode == 201 ) {
+                    try {
+                        JSONObject jsonResponse = new JSONObject(response);
+                        Log.d(TAG,response);
+                        //TODO: handle successful order
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    //TODO: handle unsuccessful order
+                }
+            }
+        };
+        String url = EndPoints.urlOrder();
+        RequestHelper.sendPostRequest(jwt,url,order.toJson(),actionPostOrder);
+    }
+
+    /**
+     *  The context must implement this interface to perform UI interaction on this fragment
+     */
+    public interface OnOrderFragmentInteractionListener {
+        void onSelectPaymentMethod();    // goto the payment method selection page
+        void onBackButtonPressed();
     }
 }

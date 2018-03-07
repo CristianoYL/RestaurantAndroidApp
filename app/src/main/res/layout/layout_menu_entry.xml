@@ -17,10 +17,10 @@
         android:orientation="horizontal"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toLeftOf="@+id/layout_order"
+        app:layout_constraintRight_toLeftOf="@+id/layout_order_operation"
         android:gravity="center"
-        app:layout_constraintTop_toTopOf="@+id/layout_order"
-        app:layout_constraintBottom_toBottomOf="@+id/layout_order"
+        app:layout_constraintTop_toTopOf="@+id/layout_order_operation"
+        app:layout_constraintBottom_toBottomOf="@+id/layout_order_operation"
         android:layout_marginBottom="8dp"
         >
 
@@ -46,7 +46,7 @@
             app:layout_constraintLeft_toRightOf="@id/tv_name"
             android:layout_marginLeft="5dp"
             android:layout_marginStart="5dp"
-            />
+            android:contentDescription="expand/collapse" />
 
         <TextView
             android:id="@+id/tv_price"
@@ -62,7 +62,7 @@
     </android.support.constraint.ConstraintLayout>
 
     <LinearLayout
-        android:id="@+id/layout_order"
+        android:id="@+id/layout_order_operation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginRight="8dp"
@@ -72,7 +72,7 @@
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginEnd="8dp">
 
-        <Button
+        <android.support.v7.widget.AppCompatButton
             android:id="@+id/fab_remove"
             android:layout_width="24dp"
             android:layout_height="24dp"
@@ -95,7 +95,7 @@
             android:layout_marginEnd="3dp"
             android:layout_weight="1" />
 
-        <Button
+        <android.support.v7.widget.AppCompatButton
             android:id="@+id/fab_add"
             android:layout_width="24dp"
             android:layout_height="24dp"
@@ -120,12 +120,13 @@
         android:gravity="center_horizontal"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/layout_order">
+        app:layout_constraintTop_toBottomOf="@+id/layout_order_operation">
 
         <ImageView
-            android:id="@+id/iv_food"
+            android:id="@+id/iv_food_image"
             android:layout_width="300dp"
             android:layout_height="200dp"
+            android:contentDescription="@string/cd_menu_image"
             app:srcCompat="@drawable/ic_image_24dp" />
 
         <TextView

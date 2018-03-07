@@ -2,7 +2,6 @@ package com.example.cristianoyl.restaurant.fragments.menu;
 
 import android.content.Context;
 import android.graphics.Paint;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,9 +35,9 @@ public class MenuAdapter extends BaseAdapter {
         this.menus = menus;
         this.categories = new ArrayList<>();
         this.categoryMenu = new ArrayList<>();
-        ArrayList<Menu> chefRecommended = new ArrayList<>(); // recommended dishes
+        ArrayList<Menu> chefRecommendationList = new ArrayList<>(); // recommended dishes
         categories.add(Constants.CATEGORY_CHEF_RECOMMENDED);
-        categoryMenu.add(chefRecommended);
+        categoryMenu.add(chefRecommendationList);
         this.orderMap = new HashMap<>(menus.length);
         for ( Menu menu : this.menus ) {
             orderMap.put(menu,0);   // initialize order;
@@ -51,7 +50,7 @@ public class MenuAdapter extends BaseAdapter {
                 categoryMenu.add(sameCategory);
             }
             if ( menu.isRecommended ) {
-                chefRecommended.add(menu);
+                chefRecommendationList.add(menu);
             }
         }
         this.onOrderChangeListener = onOrderChangeListener;
@@ -104,12 +103,12 @@ public class MenuAdapter extends BaseAdapter {
             //fill the category menu
             View v = LayoutInflater.from(context).inflate(R.layout.layout_menu_entry, null);
             View layoutGeneral = v.findViewById(R.id.layout_general);
-            View layoutOrder = v.findViewById(R.id.layout_order);
+            View layoutOrder = v.findViewById(R.id.layout_order_operation);
             final View layoutDetail = v.findViewById(R.id.layout_detail);
             TextView tvName = (TextView) v.findViewById(R.id.tv_name);
             TextView tvPrice = (TextView) v.findViewById(R.id.tv_price);
             TextView tv_description = (TextView) v.findViewById(R.id.tv_description);
-            ImageView ivPhoto = (ImageView) v.findViewById(R.id.iv_food);
+            ImageView ivPhoto = (ImageView) v.findViewById(R.id.iv_food_image);
             Button btnRemove = (Button) v.findViewById(R.id.fab_remove);
             Button btnAdd = (Button) v.findViewById(R.id.fab_add);
             final TextView tvAmount = (TextView) v.findViewById(R.id.tv_amount);
@@ -118,6 +117,8 @@ public class MenuAdapter extends BaseAdapter {
             tvName.setText(menu.name);
             tvPrice.setText("$" + menu.price);
             tv_description.setText(menu.description);
+            // TODO set image here
+            ivPhoto.setImageResource(R.drawable.food);
             tvAmount.setText(String.valueOf(orderMap.get(menu)));
             layoutGeneral.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -152,9 +153,6 @@ public class MenuAdapter extends BaseAdapter {
                     }
                 }
             });
-
-
-
             // insert into main view
             insertPoint.addView(v, i, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }

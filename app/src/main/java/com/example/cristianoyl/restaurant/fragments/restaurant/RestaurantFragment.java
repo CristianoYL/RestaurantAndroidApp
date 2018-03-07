@@ -25,15 +25,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A fragment representing a list of Items.
- * <p/>
- * Activities containing this fragment MUST implement the {@link OnRestaurantClickListener}
- * interface.
+ * A fragment representing a list of Restaurants.
+ * Activities containing this fragment MUST implement
+ * the {@link OnRestaurantInteractionListener} interface.
  */
 public class RestaurantFragment extends Fragment {
 
     private int mColumnCount = 1;
-    private OnRestaurantClickListener mListener;
+    private OnRestaurantInteractionListener mListener;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -69,11 +68,11 @@ public class RestaurantFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnRestaurantClickListener) {
-            mListener = (OnRestaurantClickListener) context;
+        if (context instanceof OnRestaurantInteractionListener) {
+            mListener = (OnRestaurantInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
-                    + " must implement OnRestaurantClickListener");
+                    + " must implement OnRestaurantInteractionListener");
         }
     }
 
@@ -101,18 +100,7 @@ public class RestaurantFragment extends Fragment {
                         List<Restaurant> list = new ArrayList<>(jsonArray.length());
                         for ( int i = 0; i < jsonArray.length(); i++ ) {
                             JSONObject jsonRestaurant = jsonArray.getJSONObject(i);
-                            int id = jsonRestaurant.getInt(Constants.RESTAURANT_ID);
-                            String name = jsonRestaurant.getString(Constants.RESTAURANT_NAME);
-                            float fee = (float) jsonRestaurant.getDouble(Constants.RESTAURANT_FEE);
-                            float limit = (float) jsonRestaurant.getDouble(Constants.RESTAURANT_LIMIT);
-                            String address = jsonRestaurant.getString(Constants.RESTAURANT_ADDRESS);
-                            String openTime = jsonRestaurant.getString(Constants.RESTAURANT_OPEN_TIME);
-                            String closeTime = jsonRestaurant.getString(Constants.RESTAURANT_CLOSE_TIME);
-                            boolean isOpen = jsonRestaurant.getBoolean(Constants.RESTAURANT_IS_OPEN);
-                            String logo = jsonRestaurant.getString(Constants.RESTAURANT_LOGO);
-                            String promo = jsonRestaurant.getString(Constants.RESTAURANT_PROMO);
-                            String phone = jsonRestaurant.getString(Constants.RESTAURANT_PHONE);
-                            list.add(new Restaurant(id,name,address,openTime,closeTime,logo,promo,phone,fee,limit,isOpen));
+                            list.add(Restaurant.buildFromJson(jsonRestaurant));
                         }
                         Context context = recyclerView.getContext();
                         recyclerView.setLayoutManager(new LinearLayoutManager(context));
@@ -135,12 +123,8 @@ public class RestaurantFragment extends Fragment {
      * fragment to allow an interaction in this fragment to be communicated
      * to the activity and potentially other fragments contained in that
      * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
      */
-    public interface OnRestaurantClickListener {
+    public interface OnRestaurantInteractionListener {
         void onRestaurantClicked(Restaurant restaurant);
     }
 }

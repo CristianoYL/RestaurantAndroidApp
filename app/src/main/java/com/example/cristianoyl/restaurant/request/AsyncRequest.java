@@ -23,13 +23,15 @@ import java.net.URL;
 public class AsyncRequest extends AsyncTask<Void, Void, String> {
 
     private static final String TAG = "AsyncRequest";
+    private String jwt;
     private String url;
     private String method;
     private String jsonData;
     private int responseCode = 400;
     private RequestAction requestAction = null;
 
-    public AsyncRequest(String url, String method, String data, RequestAction action){
+    public AsyncRequest(String jwt, String url, String method, String data, RequestAction action){
+        this.jwt = jwt;
         this.url = url;
         this.method = method;
         this.jsonData = data;
@@ -38,7 +40,7 @@ public class AsyncRequest extends AsyncTask<Void, Void, String> {
 
     @Override
     protected String doInBackground(Void... voids) {
-        return sendRequest(url,method,jsonData);
+        return sendRequest(jwt,url,method,jsonData);
     }
 
     @Override
@@ -55,7 +57,7 @@ public class AsyncRequest extends AsyncTask<Void, Void, String> {
         super.onPostExecute(result);
     }
 
-    private String sendRequest(String url, String method, String jsonData){
+    private String sendRequest(String jwt, String url, String method, String jsonData){
         Log.d(TAG,"sending " + method +" request to " + url);
         Log.d(TAG,"payload:" + jsonData);
         String response = "";
@@ -65,6 +67,10 @@ public class AsyncRequest extends AsyncTask<Void, Void, String> {
         try {
             httpURLConnection = (HttpURLConnection) (new URL(url)).openConnection();
             httpURLConnection.setRequestMethod(method);
+            if ( jwt != null ) {
+                httpURLConnection.setRequestProperty("Authorization", "JWT "+jwt);
+                Log.d(TAG,"Setting JWT:"+jwt);
+            }
             if (jsonData != null) {
                 httpURLConnection.setRequestProperty("content-type", "application/json");
                 httpURLConnection.setDoOutput(true);
@@ -97,7 +103,7 @@ public class AsyncRequest extends AsyncTask<Void, Void, String> {
             }
             inputStream.close();
             response = stringBuilder.toString();
-            Log.d(TAG, "response:"+ response + ";");
+            Log.i(TAG, "response:"+ response + ";");
         } catch (SocketTimeoutException e) {
             response = Constants.MSG_TIME_OUT;
         } catch (IOException e) {

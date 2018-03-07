@@ -8,9 +8,10 @@ package com.example.cristianoyl.restaurant.request;
 
 public class EndPoints {
     private static final String URL_LOCAL = "http://192.168.1.13:5000";
-    private static final String URL_CHANG = "http://192.168.0.103:5000";
-    private static final String URL_HEROKU = "";
-    private static final String URL = URL_LOCAL;
+    private static final String URL_CHANG = "http://192.168.0.107:5000";
+    private static final String URL_MU = "http://10.0.5.51:5000";
+    private static final String URL_HEROKU = "https://restaurant-rest-api.herokuapp.com";
+    private static final String URL = URL_HEROKU;
 
     // login
     public static String urlLogin(){
@@ -29,7 +30,16 @@ public class EndPoints {
 
     // menu
     public static String urlRestaurantMenu(int restaurantID) {
-//        return URL + "/menu/rid/" + restaurantID;
-        return URL + "/menu";
+        return URL + "/menu/restaurant/" + restaurantID;
+    }
+
+    // stripe
+    public static String urlEphemeralKey() {
+        return URL + "/transaction/ephemeral_key";
+    }
+
+    // order
+    public static String urlOrder() {
+        return URL + "/order";
     }
 }
