@@ -13,10 +13,13 @@ import android.widget.TextView;
 
 import com.example.cristianoyl.restaurant.R;
 import com.example.cristianoyl.restaurant.models.Menu;
+import com.example.cristianoyl.restaurant.request.EndPoints;
+import com.example.cristianoyl.restaurant.services.ImageLoader;
 import com.example.cristianoyl.restaurant.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 
 /**
  * Created by CristianoYL on 8/8/17.
@@ -115,10 +118,10 @@ public class MenuAdapter extends BaseAdapter {
 
             // fill in any details dynamically here
             tvName.setText(menu.name);
-            tvPrice.setText("$" + menu.price);
+            tvPrice.setText(String.format(Locale.US,"$%.2f", menu.price));
             tv_description.setText(menu.description);
-            // TODO set image here
-            ivPhoto.setImageResource(R.drawable.food);
+            ImageLoader.load(ivPhoto, EndPoints.urlMenuImage(menu.id), context, 320, 260);
+
             tvAmount.setText(String.valueOf(orderMap.get(menu)));
             layoutGeneral.setOnClickListener(new View.OnClickListener() {
                 @Override

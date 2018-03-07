@@ -53,7 +53,7 @@ public class Constants {
     public static final String RESTAURANT_PHONE = "phone";
     // menu model
     public static final String MENU_ID = "id";
-    public static final String MENU_RID = "rid";
+    public static final String MENU_RID = "restaurantID";
     public static final String MENU_NAME = "name";
     public static final String MENU_PRICE = "price";
     public static final String MENU_CATEGORY = "category";
@@ -61,6 +61,7 @@ public class Constants {
     public static final String MENU_SPICY = "spicy";
     public static final String MENU_IS_AVAILABLE = "isAvailable";
     public static final String MENU_IS_RECOMMENDED = "isRecommended";
+    public static final String MENU_IMAGE = "image";
 
     public static final String CATEGORY_CHEF_RECOMMENDED = "Chef's Recommendation";
 

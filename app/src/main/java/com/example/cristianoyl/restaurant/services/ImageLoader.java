@@ -1,26 +1,19 @@
 package com.example.cristianoyl.restaurant.services;
 
-import android.app.IntentService;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.os.ResultReceiver;
-import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
 
 import com.example.cristianoyl.restaurant.R;
-import com.example.cristianoyl.restaurant.utils.Constants;
-import com.example.cristianoyl.restaurant.utils.LocalDBHelper;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /**
  * Created by CristianoYL on 11/19/17.
@@ -38,28 +31,104 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
     int resId;
     ImageView imageView;
     Context context;
-//    ProgressBar progressBar;
-    LocalDBHelper dbHelper;
-//    MyAmazonS3Service myAmazonS3Service;
-//    MyAmazonS3Service.OnUploadResultListener listener;
-    Bitmap bitmap;
+    boolean isResource;
+    int width, height;
 
-    public ImageLoader(ImageView imageView, String url, Context context){
+    /**
+     * Static method, used to load an image from a URL on a separate thread.
+     * If the {@param width} and {@param height} are provided, the image will be scaled
+     * according to the dimension before loading into memory, thus improve the performance.
+     *
+     * @param imageView the ImageView to display the image
+     * @param url       the url of the image to display
+     * @param context   context of the activity
+     * @param width     requested width of the image
+     * @param height    requested height of the image
+     */
+    public static void load(ImageView imageView, String url, Context context, int width, int height) {
+        new ImageLoader(imageView, url, context, width, height);
+    }
+
+    /**
+     *  Overloading static method, used to load an image from a URL on a separate thread without
+     *  specifying the ImageView dimensions, thus no performance optimization.
+     */
+    public static void load(ImageView imageView, String url, Context context) {
+        new ImageLoader(imageView, url, context);
+    }
+
+    /**
+     * Static method, used to load an image from a URL on a separate thread.
+     * If the {@param width} and {@param height} are provided, the image will be scaled
+     * according to the dimension before loading into memory, thus improve the performance.
+     *
+     * @param imageView the ImageView to display the image
+     * @param resId the resource id of the image to display
+     * @param context   context of the activity
+     * @param width requested width of the image
+     * @param height    requested height of the image
+     */
+    public static void load(ImageView imageView, int resId, Context context, int width, int height) {
+        new ImageLoader(imageView, resId, context, width, height);
+    }
+
+    /**
+     *  Overloading static method, used to load an image from resource on a separate thread without
+     *  specifying the ImageView dimensions, thus no performance optimization.
+     */
+    public static void load(ImageView imageView, int resId, Context context) {
+        new ImageLoader(imageView, resId, context);
+    }
+
+    /**
+     * Constructor for ImageLoader for url-specified image
+     * @param imageView the ImageView to display the image
+     * @param url       the url of the image to display
+     * @param context   context of the activity
+     * @param width     requested width of the image
+     * @param height    requested height of the image
+     */
+    private ImageLoader(ImageView imageView, String url, Context context, int width, int height) {
         this.imageView = imageView;
-//        this.progressBar = progressBar;
         this.url = url;
         this.context = context;
+        this.isResource = false;
+        this.width = width;
+        this.height = height;
+        Log.d(TAG, "Load image from URL: " + url);
+        this.execute();
     }
 
-    public ImageLoader(ImageView imageView, int resId, Context context){
+    /**
+     * Constructor for ImageLoader for resource-specified image
+     * @param imageView the ImageView to display the image
+     * @param resId the resource id of the image to display
+     * @param context   context of the activity
+     * @param width     requested width of the image
+     * @param height    requested height of the image
+     */
+    private ImageLoader(ImageView imageView, int resId, Context context, int width, int height) {
         this.imageView = imageView;
-//        this.progressBar = progressBar;
         this.resId = resId;
         this.context = context;
+        this.isResource = true;
+        this.width = width;
+        this.height = height;
+        this.execute();
     }
 
-    public void loadImage(){
-        this.execute();
+    /**
+     *  Overloading with default dimension
+     */
+    private ImageLoader(ImageView imageView, String url, Context context) {
+        this(imageView, url, context, 0, 0);
+    }
+
+    /**
+     *  Overloading
+     */
+    private ImageLoader(ImageView imageView, int resId, Context context) {
+        this(imageView, resId, context, 0, 0);
     }
 
     @Override
@@ -68,7 +137,6 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
 //        if ( progressBar != null ) {
 //            progressBar.setVisibility(View.VISIBLE);
 //        }
-//        this.imageView.setImageResource(R.drawable.ic_image_default_background);
     }
 
     @Override
@@ -80,31 +148,8 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
 //            return bitmap;
 //        }
         // if no cache found, load from internet
-        Log.d(TAG,"Load image from internet.");
-        if ( url != null ) {
-            // load from url
-        } else {
-            // load from res
-            bitmap = decodeSampledBitmapFromResource(context.getResources(),resId,300,200);
-        }
-        // load from S3
-        //Log.d(TAG,"Load image from AWS S3.");
-//        listener = new MyAmazonS3Service.OnUploadResultListener() {
-//            @Override
-//            public void onFinished(int responseCode, String message) {
-//                if ( responseCode == 200 ) {
-//                    bitmap = dbHelper.getCachedImage(url);
-//                    imageView.setImageBitmap(bitmap);
-//                    Log.d(TAG,message);
-//                } else {
-//                    Log.e(TAG,"Failed to load image:"+url);
-//                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-//                }
-//            }
-//        };
-//        this.myAmazonS3Service = new MyAmazonS3Service(context,listener);
-//        myAmazonS3Service.downloadFromS3(url,true);
-        return bitmap;
+        Log.d(TAG, "Load image from internet.");
+        return loadImage();
     }
 
     @Override
@@ -112,27 +157,75 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
 //        if ( progressBar != null ) {
 //            progressBar.setVisibility(View.INVISIBLE);
 //        }
-        if ( bitmap != null && imageView.getVisibility() == View.VISIBLE ) {
-            imageView.setImageBitmap(bitmap);
+        if (imageView.getVisibility() == View.VISIBLE) {
+            if (bitmap != null) {
+                imageView.setImageBitmap(bitmap);
+            } else {
+                // use default image
+                Log.e(TAG, "Failed to load image.");
+                imageView.setImageResource(R.drawable.food);
+            }
         }
     }
-    private static Bitmap decodeSampledBitmapFromResource(Resources res, int resId,
-                                                         int reqWidth, int reqHeight) {
 
-
-        // First decode with inJustDecodeBounds=true to check dimensions
+    /**
+     * if a width and a height are provided, we will try to scale the image according to the
+     * dimension and then load the scaled version into the memory.
+     */
+    private Bitmap loadImage() {
         final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeResource(res, resId, options);
-
-        // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-
-        // Decode bitmap with inSampleSize set
-        options.inJustDecodeBounds = false;
-        return BitmapFactory.decodeResource(res, resId, options);
+        URL url = null;
+        if (this.width > 0 && this.height > 0) {
+            // First decode with inJustDecodeBounds=true to check dimensions
+            options.inJustDecodeBounds = true;
+            if (this.isResource) {
+                BitmapFactory.decodeResource(this.context.getResources(), this.resId, options);
+            } else {
+                try {
+                    url = new URL(this.url);
+                    BitmapFactory.decodeStream(url.openConnection().getInputStream(), null, options);
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            options.inSampleSize = calculateInSampleSize(options, this.width, this.height);
+            options.inJustDecodeBounds = false;
+            // now that options.inSampleSize is set, the image will be scaled when downloading (if option is used)
+        }
+        if (this.isResource) {
+            return BitmapFactory.decodeResource(this.context.getResources(), this.resId, options);
+        } else {
+            try {
+                url = new URL(this.url);
+                return BitmapFactory.decodeStream(url.openConnection().getInputStream(), null, options);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
+    /**
+     * ***Important***
+     * Before calling this method, use BitmapFactory to decode the image with options.inJustDecodeBounds = true first to
+     * only retrieve the dimension of the original image, and the dimension gets stored into the
+     * options automatically.
+     * ****************
+     * <p>
+     * This method will calculate the ratio of the original dimension and requested dimension of
+     * the image and set the proper scale into the options.inSampleSize. Next time when using
+     * the BitmapFactory to decode the image with these options, the image will be scaled and then
+     * loaded into the memory for better performance.
+     *
+     * @param options   BitmapFactory decoding options
+     * @param reqWidth  requested view width
+     * @param reqHeight requested view height
+     * @return  scale of the requested image compared to the original one
+     */
     private static int calculateInSampleSize(BitmapFactory.Options options,
                                              int reqWidth, int reqHeight) {
         // Raw height and width of image
@@ -141,10 +234,8 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
         int inSampleSize = 1;
 
         if (height > reqHeight || width > reqWidth) {
-
             final int halfHeight = height / 2;
             final int halfWidth = width / 2;
-
             // Calculate the largest inSampleSize value that is a power of 2 and keeps both
             // height and width larger than the requested height and width.
             while ((halfHeight / inSampleSize) >= reqHeight
@@ -152,7 +243,7 @@ public class ImageLoader extends AsyncTask<Void, Void, Bitmap> {
                 inSampleSize *= 2;
             }
         }
-
+        Log.d(TAG, "Image scale: " + inSampleSize);
         return inSampleSize;
     }
 }
